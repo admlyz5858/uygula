@@ -1,14 +1,9 @@
-package com.lockscreennotes.widget
+package com.lockscreennotes.app.widget
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
-/**
- * Receives toggle intents from the widget list items.
- * Toggles the todo completion state in SharedPreferences
- * and refreshes the widget.
- */
 class TodoToggleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val todoId = intent.getStringExtra("todo_id") ?: return

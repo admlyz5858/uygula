@@ -1,4 +1,4 @@
-package com.lockscreennotes.widget
+package com.lockscreennotes.app.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -7,11 +7,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Paint
-import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import org.json.JSONArray
-import org.json.JSONObject
 import com.lockscreennotes.app.R
 
 data class TodoData(val id: String, val text: String, val completed: Boolean)
@@ -45,7 +43,7 @@ class TodoWidgetProvider : AppWidgetProvider() {
         fun saveTodos(context: Context, todos: List<TodoData>) {
             val arr = JSONArray()
             for (todo in todos) {
-                val obj = JSONObject()
+                val obj = org.json.JSONObject()
                 obj.put("id", todo.id)
                 obj.put("text", todo.text)
                 obj.put("completed", todo.completed)
@@ -86,14 +84,12 @@ class TodoWidgetProvider : AppWidgetProvider() {
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_todo_list)
 
-        // Set up the ListView adapter
         val serviceIntent = Intent(context, TodoWidgetService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
         }
         views.setRemoteAdapter(R.id.widget_list_view, serviceIntent)
         views.setEmptyView(R.id.widget_list_view, R.id.widget_empty_view)
 
-        // Set up the click intent template for list items
         val toggleIntent = Intent(context, TodoToggleReceiver::class.java).apply {
             action = "com.lockscreennotes.TOGGLE_TODO"
         }
@@ -103,7 +99,6 @@ class TodoWidgetProvider : AppWidgetProvider() {
         )
         views.setPendingIntentTemplate(R.id.widget_list_view, pendingIntent)
 
-        // Open app when header is tapped
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
         if (launchIntent != null) {
             val launchPending = PendingIntent.getActivity(

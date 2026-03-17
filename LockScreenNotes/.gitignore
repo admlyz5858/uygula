@@ -42,3 +42,9 @@ yarn-error.*
 # and must be tracked in version control.
 #/ios
 #/android
+
+# Build outputs
+release/*.apk
+android/app/build/
+android/.gradle/
+android/build/

@@ -1,4 +1,4 @@
-package com.lockscreennotes.widget
+package com.lockscreennotes.app.widget
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
