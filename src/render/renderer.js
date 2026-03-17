@@ -66,9 +66,11 @@ export class Renderer {
             if (!m.alive) continue;
             this.renderMarble(ctx, m);
         }
-        for (const m of marbles) {
-            if (!m.alive) continue;
-            this.renderLabel(ctx, m);
+        if (marbles.length <= 30) {
+            for (const m of marbles) {
+                if (!m.alive) continue;
+                this.renderLabel(ctx, m);
+            }
         }
     }
 

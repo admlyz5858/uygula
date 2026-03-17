@@ -63,21 +63,24 @@ export class TrackGenerator {
         this.addWall(-W / 2, 0, W / 2, 0);
         this.addWall(-W / 2, H, W / 2, H);
 
-        const funnelW = Math.min(W - 30, mc * 24);
-        const neckW = Math.max(60, funnelW * 0.3);
-        this.addWall(-funnelW / 2, 15, -neckW / 2, 85);
-        this.addWall(funnelW / 2, 15, neckW / 2, 85);
+        const funnelW = W - 20;
+        const neckW = Math.max(60, W * 0.4);
+        const funnelDepth = Math.min(120, 40 + mc * 0.1);
+        this.addWall(-funnelW / 2, 10, -neckW / 2, funnelDepth);
+        this.addWall(funnelW / 2, 10, neckW / 2, funnelDepth);
 
-        const cols = Math.ceil(Math.sqrt(mc));
-        const sx = (funnelW - 20) / Math.max(cols - 1, 1);
+        const cols = Math.max(2, Math.ceil(Math.sqrt(mc * (funnelW / (funnelDepth - 15)))));
+        const rows = Math.ceil(mc / cols);
+        const sx = (funnelW - 10) / Math.max(cols - 1, 1);
+        const sy = Math.min(20, (funnelDepth - 25) / Math.max(rows, 1));
         for (let i = 0; i < mc; i++) {
             this.startPositions.push({
-                x: -funnelW / 2 + 10 + (i % cols) * sx + this.rng.range(-1, 1),
-                y: 25 + Math.floor(i / cols) * 22,
+                x: -funnelW / 2 + 5 + (i % cols) * sx + this.rng.range(-1, 1),
+                y: 15 + Math.floor(i / cols) * sy + this.rng.range(-0.5, 0.5),
             });
         }
 
-        let y = 95;
+        let y = funnelDepth + 10;
 
         const pegRows = this.cfg.pegRows;
         for (let r = 0; r < pegRows; r++) {
