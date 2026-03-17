@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  @apply h-full w-full;
+}
+
+body {
+  @apply bg-slate-950 text-slate-100 antialiased;
+}
+
+.glass-card {
+  @apply rounded-2xl border border-white/20 bg-slate-900/35 shadow-glass backdrop-blur-xl;
+}
+
+.immersive-grid {
+  background-image: radial-gradient(circle at 20% 20%, rgba(96, 165, 250, 0.2), transparent 35%),
+    radial-gradient(circle at 80% 10%, rgba(167, 139, 250, 0.18), transparent 30%),
+    radial-gradient(circle at 50% 80%, rgba(52, 211, 153, 0.16), transparent 35%);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
