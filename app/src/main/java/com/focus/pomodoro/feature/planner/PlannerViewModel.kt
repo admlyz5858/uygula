@@ -38,7 +38,7 @@ class PlannerViewModel(
                 title = suggestion.title,
                 description = suggestion.notes,
                 priority = suggestion.priority,
-                minutes = suggestion.sessions * suggestion.minutesPerSession
+                estimatedMinutes = suggestion.sessions * suggestion.minutesPerSession
             )
         }
     }
