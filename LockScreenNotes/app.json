@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Notlarım",
+    "slug": "LockScreenNotes",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0F"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lockscreennotes.app",
+      "infoPlist": {
+        "NSWidgetWantsLocation": false
+      }
+    },
+    "android": {
+      "package": "com.lockscreennotes.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0A0F",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "./plugins/withLockScreenWidget"
+    ]
+  }
+}
