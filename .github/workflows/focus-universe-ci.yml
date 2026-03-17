@@ -1,0 +1,43 @@
+name: Focus Universe CI
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "focus-universe/**"
+      - ".github/workflows/focus-universe-ci.yml"
+  pull_request:
+    paths:
+      - "focus-universe/**"
+      - ".github/workflows/focus-universe-ci.yml"
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    defaults:
+      run:
+        working-directory: focus-universe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: focus-universe/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare fallback assets
+        run: npm run assets:fallback
+
+      - name: Run unit tests
+        run: npm run test:run
+
+      - name: Build app
+        run: npm run build

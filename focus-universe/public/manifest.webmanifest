@@ -1,0 +1,17 @@
+{
+  "name": "FOCUS UNIVERSE",
+  "short_name": "FocusUniverse",
+  "description": "Immersive pomodoro world blending ambient calm, gamification, and AI planning.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#081122",
+  "theme_color": "#0b1220",
+  "icons": [
+    {
+      "src": "/icons/focus-universe.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
