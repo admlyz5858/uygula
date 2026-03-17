@@ -1131,7 +1131,7 @@ function App() {
             <div className="mt-4 flex flex-wrap gap-2">
               {!running ? (
                 <button
-                  onClick={startFocusWorld}
+                  onClick={() => void startFocusWorld()}
                   className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-cyan-500 px-5 py-3 font-bold text-white"
                 >
                   <Play className="h-5 w-5" /> START IMMERSION
