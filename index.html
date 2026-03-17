@@ -3,124 +3,207 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta id="themeColorMeta" name="theme-color" content="#0f172a" />
+    <meta id="themeColorMeta" name="theme-color" content="#050816" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="styles.css" />
-    <title>Mobil Focus Pomodoro</title>
+    <title>Misket Arena Championship</title>
   </head>
   <body>
-    <div class="cinematic-bg" aria-hidden="true">
-      <img id="bgImage" class="bg-image" src="assets/images/autumn.webp" alt="" />
-      <div class="bg-overlay"></div>
-      <div class="floating floating--one"></div>
-      <div class="floating floating--two"></div>
-      <div class="floating floating--three"></div>
+    <div class="scene-bg" aria-hidden="true">
+      <div class="scene-bg__mesh"></div>
+      <div class="scene-bg__orb scene-bg__orb--one"></div>
+      <div class="scene-bg__orb scene-bg__orb--two"></div>
+      <div class="scene-bg__orb scene-bg__orb--three"></div>
+      <div class="scene-bg__grid"></div>
     </div>
 
-    <main class="app">
-      <header class="app__header">
-        <div class="header-top">
-          <div>
-            <h1>Focus Pomodoro</h1>
-            <p>Arka plana gömülü görseller + şeffaf arayüz</p>
-            <p id="themeStatus" class="theme-status">Tema: Otomatik</p>
+    <main class="app-shell">
+      <header class="hero panel">
+        <div class="hero__copy">
+          <span class="eyebrow">Algodoo esintili premium simulasyon</span>
+          <h1>Misket Arena Championship</h1>
+          <p>
+            Takim yarislari, ulke temali grand prix etaplari, eleme kapilari, stage lottery
+            ayrimlari ve silahli arena bolumlerini tek bir marble race deneyiminde birlestiren
+            ust duzey bir browser oyunu.
+          </p>
+        </div>
+        <div class="hero__stats">
+          <div class="hero-stat">
+            <span class="hero-stat__label">Aktif format</span>
+            <strong id="activeFormatValue">Takim Sprinti</strong>
           </div>
-          <div class="theme-switch" role="group" aria-label="Tema seçimi">
-            <button id="themeAutoBtn" class="btn btn--tiny btn--secondary theme-btn">Oto</button>
-            <button id="themeLightBtn" class="btn btn--tiny btn--secondary theme-btn">Açık</button>
-            <button id="themeDarkBtn" class="btn btn--tiny btn--secondary theme-btn">Koyu</button>
+          <div class="hero-stat">
+            <span class="hero-stat__label">Yaris durumu</span>
+            <strong id="raceStateValue">Hazir</strong>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat__label">Sezon lideri</span>
+            <strong id="championValue">-</strong>
           </div>
         </div>
       </header>
 
-      <section class="timer-card">
-        <div class="mode-row">
-          <span id="modeLabel" class="mode-badge mode-badge--focus">Odak</span>
-          <span id="sessionCount" class="session-count">Tamamlanan odak: 0</span>
-        </div>
-
-        <div class="timer-shell">
-          <div id="timerAura" class="timer-aura"></div>
-          <h2 id="timerDisplay" class="timer-display">25:00</h2>
-        </div>
-        <div class="progress-track" aria-hidden="true">
-          <div id="progressBar" class="progress-bar"></div>
-        </div>
-
-        <div class="controls">
-          <button id="startPauseBtn" class="btn btn--primary">Başlat</button>
-          <button id="resetBtn" class="btn btn--secondary">Sıfırla</button>
-          <button id="skipBtn" class="btn btn--ghost">Geç</button>
-        </div>
-      </section>
-
-      <section class="media-card">
-        <div class="media-head">
-          <h3>Arka plan görselleri</h3>
-          <div class="media-actions">
-            <button id="prevVisualBtn" class="btn btn--tiny btn--secondary">Önceki</button>
-            <button id="nextVisualBtn" class="btn btn--tiny btn--secondary">Sonraki</button>
+      <section class="setup-grid">
+        <section class="panel control-panel">
+          <div class="panel__heading">
+            <div>
+              <h2>Yaris kontrol merkezi</h2>
+              <p>Her event, verdiginiz videolardaki ayri bir marble race alt turunu temsil eder.</p>
+            </div>
+            <span class="chip chip--accent" id="trackModeChip">Hazir</span>
           </div>
-        </div>
-        <p id="galleryCaption" class="bg-caption">Arka plan: Autumn Scene</p>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>Event secimi</span>
+              <select id="trackSelect"></select>
+            </label>
+            <label class="field">
+              <span>Misket sayisi</span>
+              <input id="marbleCountInput" type="range" min="12" max="60" step="2" value="32" />
+              <strong id="marbleCountValue">32</strong>
+            </label>
+            <label class="field">
+              <span>Simulasyon hizi</span>
+              <input id="simSpeedInput" type="range" min="0.75" max="2.75" step="0.25" value="1.5" />
+              <strong id="simSpeedValue">1.50x</strong>
+            </label>
+            <label class="field">
+              <span>Oto ilerleme</span>
+              <select id="autoAdvanceSelect">
+                <option value="on">Acik</option>
+                <option value="off">Kapali</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="button-row">
+            <button id="startRaceBtn" class="btn btn--primary">Yeni yaris baslat</button>
+            <button id="pauseBtn" class="btn btn--secondary">Duraklat</button>
+            <button id="championshipBtn" class="btn btn--ghost">6 etaplik sampiyona</button>
+            <button id="nextEventBtn" class="btn btn--secondary">Sonraki event</button>
+          </div>
+
+          <div class="kpi-grid">
+            <article class="kpi-card">
+              <span class="kpi-card__label">Tur / asama</span>
+              <strong id="lapValue">0 / 0</strong>
+            </article>
+            <article class="kpi-card">
+              <span class="kpi-card__label">Hayatta kalan</span>
+              <strong id="survivorValue">0</strong>
+            </article>
+            <article class="kpi-card">
+              <span class="kpi-card__label">Canli lider</span>
+              <strong id="leaderValue">-</strong>
+            </article>
+            <article class="kpi-card">
+              <span class="kpi-card__label">Puan lideri</span>
+              <strong id="pointsLeaderValue">-</strong>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel track-panel">
+          <div class="panel__heading">
+            <div>
+              <h2 id="trackTitle">Takim Sprinti</h2>
+              <p id="trackSummary">
+                30 renkli takim esintisini hiz koridorlari, spin sektoru ve grup yarisi temposuyla
+                acan acilis etabi.
+              </p>
+            </div>
+            <span class="chip" id="eventIndexChip">Event 1/6</span>
+          </div>
+
+          <div class="track-meta-grid">
+            <article class="track-meta-card">
+              <span>Ilham</span>
+              <strong id="trackInspiration">The Team Marble Race 3 in Algodoo - 30 Colors</strong>
+            </article>
+            <article class="track-meta-card">
+              <span>Kurallar</span>
+              <strong id="trackRules">Cok turlu finis + takim baskisi</strong>
+            </article>
+            <article class="track-meta-card">
+              <span>Hazard paketi</span>
+              <strong id="trackHazardMeta">Boost, spinner, funnel</strong>
+            </article>
+          </div>
+
+          <ul id="hazardList" class="hazard-list"></ul>
+        </section>
       </section>
 
-      <section class="music-card">
-        <h3>Odak müzikleri / ambiyans</h3>
-        <p class="music-subtitle">Telifsiz stok ses arşivi</p>
-        <div class="music-grid">
-          <label>
-            <span>Parça seç</span>
-            <select id="musicSelect"></select>
-          </label>
-          <label>
-            <span>Ses seviyesi</span>
-            <input id="volumeInput" type="range" min="0" max="100" value="45" />
-          </label>
-        </div>
-        <div class="controls controls--music">
-          <button id="musicToggleBtn" class="btn btn--primary">Müziği başlat</button>
-          <button id="musicMuteBtn" class="btn btn--ghost">Sessize al</button>
-        </div>
-        <p id="trackMeta" class="track-meta"></p>
-        <audio id="ambientPlayer" preload="metadata" loop playsinline></audio>
+      <section class="arena-grid">
+        <section class="panel arena-panel">
+          <div class="arena-panel__head">
+            <div>
+              <h2>Canli arena</h2>
+              <p>Canvas simulasyon, cizgisel pist geometri verisi ve anlik sektor etkileri ile calisir.</p>
+            </div>
+            <div class="arena-legend">
+              <span><i class="legend-dot legend-dot--finish"></i> finish</span>
+              <span><i class="legend-dot legend-dot--hazard"></i> hazard</span>
+              <span><i class="legend-dot legend-dot--combat"></i> combat</span>
+            </div>
+          </div>
+          <div class="canvas-shell">
+            <canvas id="raceCanvas" width="1280" height="720" aria-label="Misket yarisi canvas alani"></canvas>
+          </div>
+        </section>
+
+        <aside class="panel feed-panel">
+          <div class="panel__heading">
+            <div>
+              <h2>Canli akis</h2>
+              <p>Eleme kapilari, lider degisimleri ve arena vuruslari burada toplanir.</p>
+            </div>
+            <span class="chip chip--accent" id="timelineChip">0 olay</span>
+          </div>
+          <div id="eventLog" class="event-log"></div>
+        </aside>
       </section>
 
-      <section class="settings-card">
-        <h3>Ayarlar</h3>
-        <div class="settings-grid">
-          <label>
-            <span>Odak (dk)</span>
-            <input id="focusInput" type="number" min="1" max="90" value="25" />
-          </label>
-          <label>
-            <span>Kısa mola (dk)</span>
-            <input id="shortBreakInput" type="number" min="1" max="30" value="5" />
-          </label>
-          <label>
-            <span>Uzun mola (dk)</span>
-            <input id="longBreakInput" type="number" min="5" max="60" value="15" />
-          </label>
-          <label>
-            <span>Uzun mola döngüsü</span>
-            <input id="cycleInput" type="number" min="2" max="8" value="4" />
-          </label>
-        </div>
-        <button id="saveSettingsBtn" class="btn btn--secondary btn--full">Ayarları kaydet</button>
-      </section>
+      <section class="analytics-grid">
+        <section class="panel standings-panel">
+          <div class="panel__heading">
+            <div>
+              <h2>Canli sira ve sezon puani</h2>
+              <p>Finis dereceleri, anlik durum ve genel puan tablosu birlikte gosterilir.</p>
+            </div>
+          </div>
 
-      <section class="tips-card">
-        <h3>Hızlı ipucu</h3>
-        <ul>
-          <li>Her odak seansında tek bir göreve odaklan.</li>
-          <li>Bildirimleri kapatıp telefonu sessize al.</li>
-          <li>Molada ayağa kalkıp kısa yürüyüş yap.</li>
-        </ul>
-      </section>
+          <div class="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Misket</th>
+                  <th>Takim</th>
+                  <th>Durum</th>
+                  <th>Ilerleme</th>
+                  <th>Puan</th>
+                </tr>
+              </thead>
+              <tbody id="standingsBody"></tbody>
+            </table>
+          </div>
+        </section>
 
-      <section class="credits-card">
-        <h3>Medya kaynakları</h3>
-        <p>Görseller ve müzikler Wikimedia Commons üzerinden, telifsiz / açık lisanslı stok içeriklerdir.</p>
+        <section class="panel references-panel">
+          <div class="panel__heading">
+            <div>
+              <h2>Referans format analizi</h2>
+              <p>
+                Verdigimiz alt tasarimlar, paylastiginiz videolarin baslik tipolojileri ve klasik
+                Algodoo marble race dili baz alinarak olusturuldu.
+              </p>
+            </div>
+          </div>
+          <div id="referenceCards" class="reference-grid"></div>
+        </section>
       </section>
     </main>
 
