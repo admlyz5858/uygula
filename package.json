@@ -5,7 +5,9 @@
   "main": "js/main.js",
   "scripts": {
     "start": "npx http-server -p 8080 -o",
-    "build:web": "rm -rf dist && mkdir -p dist/js && cp index.html styles.css dist/ && cp js/main.js dist/js/"
+    "build:web": "rm -rf dist && mkdir -p dist/js && cp index.html styles.css dist/ && cp js/main.js dist/js/",
+    "sync:android": "npm run build:web && npx cap sync android",
+    "build:apk": "npm run sync:android && cd android && chmod +x gradlew && ./gradlew assembleDebug"
   },
   "repository": {
     "type": "git",
