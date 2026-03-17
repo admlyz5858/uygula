@@ -179,8 +179,8 @@
     wp.push({ x: -2, y: 11, z: 226, w: 4.5 });
     wp.push({ x: 2, y: 10, z: 238, w: 5 });
     wp.push({ x: 5, y: 11.5, z: 246, w: 5 });
-    // Jump gap — landing further ahead
-    wp.push({ x: 10, y: 5, z: 264, w: 7 });
+    // Jump gap — landing zone
+    wp.push({ x: 8, y: 4, z: 258, w: 8 });
 
     // Section 7 – Bumpy Chicane
     wp.push({ x: 17, y: 4, z: 278, w: 3.8 });
@@ -202,13 +202,6 @@
   const finishZ = trackWP[trackWP.length - 1].z - 5;
 
   // ───────── Track Builder ─────────
-  const sectionColors = [
-    0xcc4444, 0xcc4444,
-    0xdd7733, 0xdd7733, 0xdd7733,
-    0xccaa22, 0xccaa22, 0xccaa22,
-    0x44aa44, 0x44aa44, 0x44aa44, 0x44aa44, 0x44aa44, 0x44aa44, 0x44aa44, 0x44aa44,
-  ];
-
   function getSectionColor(idx) {
     const t = idx / (trackWP.length - 1);
     const hue = t * 0.75;
@@ -245,21 +238,19 @@
     const wMat = new THREE.MeshStandardMaterial({ color: col.clone().multiplyScalar(0.65), roughness: 0.75, transparent: true, opacity: 0.55 });
     const wG = new THREE.BoxGeometry(WALL_THICK, WALL_HEIGHT, len);
 
-    [[-1, 1]].forEach(() => {
-      [-1, 1].forEach((side) => {
-        const wM = new THREE.Mesh(wG, wMat);
-        const off = new THREE.Vector3(side * (w / 2 + WALL_THICK / 2), WALL_HEIGHT / 2, 0).applyQuaternion(q);
-        wM.position.copy(mid).add(off);
-        wM.setRotationFromQuaternion(q);
-        wM.castShadow = true;
-        scene.add(wM);
+    [-1, 1].forEach((side) => {
+      const wM = new THREE.Mesh(wG, wMat);
+      const off = new THREE.Vector3(side * (w / 2 + WALL_THICK / 2), WALL_HEIGHT / 2, 0).applyQuaternion(q);
+      wM.position.copy(mid).add(off);
+      wM.setRotationFromQuaternion(q);
+      wM.castShadow = true;
+      scene.add(wM);
 
-        const wB = new CANNON.Body({ mass: 0, material: matTrack });
-        wB.addShape(new CANNON.Box(new CANNON.Vec3(WALL_THICK / 2, WALL_HEIGHT / 2, len / 2)));
-        wB.position.copy(wM.position);
-        wB.quaternion.set(q.x, q.y, q.z, q.w);
-        world.addBody(wB);
-      });
+      const wB = new CANNON.Body({ mass: 0, material: matTrack });
+      wB.addShape(new CANNON.Box(new CANNON.Vec3(WALL_THICK / 2, WALL_HEIGHT / 2, len / 2)));
+      wB.position.set(wM.position.x, wM.position.y, wM.position.z);
+      wB.quaternion.set(q.x, q.y, q.z, q.w);
+      world.addBody(wB);
     });
   }
 
@@ -394,6 +385,26 @@
       scene.add(c);
     }
 
+    // Boost zone indicators (glowing track sections)
+    const boostZones = [
+      { z: 50, x: 0, y: 64, w: 11 },
+      { z: 238, x: 2, y: 10, w: 5 },
+      { z: 345, x: 10, y: 1, w: 6.5 },
+    ];
+    boostZones.forEach((bz) => {
+      const geo = new THREE.BoxGeometry(bz.w - 0.5, 0.08, 6);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x00ff44,
+        emissive: 0x00ff44,
+        emissiveIntensity: 0.5,
+        transparent: true,
+        opacity: 0.6,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(bz.x, bz.y + 0.3, bz.z);
+      scene.add(mesh);
+    });
+
     // Bumpers in the chicane
     addBumper(12, 3.8, 283, 0.5, 1.5);
     addBumper(12, 3.2, 293, 0.5, 1.5);
@@ -402,6 +413,10 @@
     // Bumpers in S-curves
     addBumper(10, 42, 133, 0.45, 1.3);
     addBumper(8, 35, 155, 0.45, 1.3);
+
+    // Spinning obstacles
+    addSpinner(1, 47, 103, 1.8, 2.5);
+    addSpinner(12, 3.5, 283, 1.5, 3.0);
   }
 
   function addBumper(x, y, z, radius, height) {
@@ -429,6 +444,45 @@
     }
   }
 
+  // ───────── Environment Map for Shiny Marbles ─────────
+  let envMap = null;
+  function generateEnvMap() {
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+    const envRT = pmremGenerator.fromScene(scene, 0, 0.1, 500);
+    envMap = envRT.texture;
+    pmremGenerator.dispose();
+  }
+
+  // ───────── Marble Trail System ─────────
+  const TRAIL_LENGTH = 28;
+
+  function createTrail(color) {
+    const positions = new Float32Array(TRAIL_LENGTH * 3);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geo.setDrawRange(0, 0);
+    const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.35 });
+    const line = new THREE.Line(geo, mat);
+    scene.add(line);
+    return { geo, positions, line, count: 0 };
+  }
+
+  function updateTrail(trail, pos) {
+    const p = trail.positions;
+    if (trail.count < TRAIL_LENGTH) trail.count++;
+    for (let i = (trail.count - 1) * 3; i >= 3; i -= 3) {
+      p[i] = p[i - 3];
+      p[i + 1] = p[i - 2];
+      p[i + 2] = p[i - 1];
+    }
+    p[0] = pos.x;
+    p[1] = pos.y;
+    p[2] = pos.z;
+    trail.geo.attributes.position.needsUpdate = true;
+    trail.geo.setDrawRange(0, trail.count);
+  }
+
   // ───────── Marble Creation ─────────
   function createMarbles() {
     const startWP = trackWP[0];
@@ -436,12 +490,13 @@
 
     for (let i = 0; i < MARBLE_DEFS.length; i++) {
       const def = MARBLE_DEFS[i];
-      const geo = new THREE.SphereGeometry(MARBLE_RADIUS, 24, 24);
+      const geo = new THREE.SphereGeometry(MARBLE_RADIUS, 28, 28);
       const mat = new THREE.MeshStandardMaterial({
         color: def.color,
-        roughness: 0.12,
-        metalness: 0.88,
-        envMapIntensity: 1,
+        roughness: 0.1,
+        metalness: 0.9,
+        envMap: envMap,
+        envMapIntensity: 1.2,
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
@@ -464,8 +519,10 @@
       body.position.set(x, y, z);
       world.addBody(body);
 
+      const trail = createTrail(def.color);
+
       state.marbles.push({
-        def, mesh, body,
+        def, mesh, body, trail,
         startX: x, startY: y, startZ: z,
         finished: false,
         finishTime: 0,
@@ -484,7 +541,19 @@
       m.finished = false;
       m.finishTime = 0;
       m.progress = 0;
+      if (m.trail) {
+        m.trail.count = 0;
+        m.trail.geo.setDrawRange(0, 0);
+      }
     });
+    // Clear confetti
+    confettiPieces.forEach((c) => {
+      scene.remove(c.mesh);
+      c.mesh.geometry.dispose();
+      c.mesh.material.dispose();
+    });
+    confettiPieces.length = 0;
+    confettiActive = false;
   }
 
   // ───────── Progress Tracking ─────────
@@ -533,18 +602,29 @@
   const cam = {
     pos: new THREE.Vector3(0, 110, -30),
     look: new THREE.Vector3(0, 80, 20),
-    offset: new THREE.Vector3(-18, 14, -16),
-    smoothP: 0.035,
-    smoothL: 0.045,
+    smoothP: 0.04,
+    smoothL: 0.05,
+    angleTimer: 0,
+    currentAngle: 0,
+    angleDuration: 6,
   };
+
+  const CAM_ANGLES = [
+    { offset: new THREE.Vector3(-16, 12, -14), name: "chase-left" },
+    { offset: new THREE.Vector3(16, 10, -12), name: "chase-right" },
+    { offset: new THREE.Vector3(0, 20, -18), name: "high-back" },
+    { offset: new THREE.Vector3(-8, 6, -8), name: "low-left" },
+    { offset: new THREE.Vector3(5, 15, 10), name: "front-high" },
+    { offset: new THREE.Vector3(-20, 8, 0), name: "side" },
+  ];
 
   function updateCamera() {
     if (state.phase === "menu") {
       const t = Date.now() * 0.00008;
       const cx = 10 + Math.cos(t) * 70;
       const cz = 150 + Math.sin(t) * 70;
-      cam.pos.lerp(new THREE.Vector3(cx, 85, cz), 0.01);
-      cam.look.lerp(new THREE.Vector3(0, 45, 160), 0.01);
+      cam.pos.lerp(new THREE.Vector3(cx, 85, cz), 0.012);
+      cam.look.lerp(new THREE.Vector3(0, 45, 160), 0.012);
       camera.position.copy(cam.pos);
       camera.lookAt(cam.look);
       return;
@@ -562,9 +642,12 @@
     const lp = leader.body.position;
     const target = new THREE.Vector3(lp.x, lp.y, lp.z);
     const vel = leader.body.velocity;
-    const lookAhead = new THREE.Vector3(vel.x, 0, vel.z).normalize().multiplyScalar(12);
+    const speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+    const lookAheadDist = Math.min(speed * 0.6, 15);
+    const lookAhead = new THREE.Vector3(vel.x, 0, vel.z).normalize().multiplyScalar(lookAheadDist);
 
-    const desiredPos = target.clone().add(cam.offset);
+    const angle = CAM_ANGLES[cam.currentAngle];
+    const desiredPos = target.clone().add(angle.offset);
     const desiredLook = target.clone().add(lookAhead);
 
     cam.pos.lerp(desiredPos, cam.smoothP);
@@ -572,6 +655,15 @@
 
     camera.position.copy(cam.pos);
     camera.lookAt(cam.look);
+  }
+
+  function rotateCameraAngle(dt) {
+    cam.angleTimer += dt;
+    if (cam.angleTimer >= cam.angleDuration) {
+      cam.angleTimer = 0;
+      cam.currentAngle = (cam.currentAngle + 1) % CAM_ANGLES.length;
+      cam.angleDuration = 4 + Math.random() * 4;
+    }
   }
 
   // ───────── UI ─────────
@@ -687,6 +779,95 @@
       yourEl.innerHTML = `Misketin <strong>${pos}. oldu.</strong> Bir dahaki sefere!`;
       yourEl.style.borderColor = "rgba(255,255,255,.06)";
     }
+  }
+
+  // ───────── Confetti System ─────────
+  const confettiPieces = [];
+  let confettiActive = false;
+
+  function spawnConfetti(origin) {
+    confettiActive = true;
+    const colors = [0xff2233, 0x2266ff, 0x22cc44, 0xffcc00, 0xff44aa, 0x9944ff, 0x00cccc, 0xffffff];
+    for (let i = 0; i < 120; i++) {
+      const geo = new THREE.PlaneGeometry(0.25 + Math.random() * 0.3, 0.25 + Math.random() * 0.3);
+      const mat = new THREE.MeshBasicMaterial({
+        color: colors[Math.floor(Math.random() * colors.length)],
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.9,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        origin.x + (Math.random() - 0.5) * 10,
+        origin.y + 4 + Math.random() * 8,
+        origin.z + (Math.random() - 0.5) * 10
+      );
+      mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      scene.add(mesh);
+      confettiPieces.push({
+        mesh,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 8, Math.random() * 6 + 3, (Math.random() - 0.5) * 8),
+        rotVel: new THREE.Vector3((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5),
+        life: 3 + Math.random() * 2,
+      });
+    }
+  }
+
+  function updateConfetti(dt) {
+    if (!confettiActive) return;
+    for (let i = confettiPieces.length - 1; i >= 0; i--) {
+      const c = confettiPieces[i];
+      c.life -= dt;
+      if (c.life <= 0) {
+        scene.remove(c.mesh);
+        c.mesh.geometry.dispose();
+        c.mesh.material.dispose();
+        confettiPieces.splice(i, 1);
+        continue;
+      }
+      c.vel.y -= 6 * dt;
+      c.vel.x *= 0.99;
+      c.vel.z *= 0.99;
+      c.mesh.position.add(c.vel.clone().multiplyScalar(dt));
+      c.mesh.rotation.x += c.rotVel.x * dt;
+      c.mesh.rotation.y += c.rotVel.y * dt;
+      c.mesh.rotation.z += c.rotVel.z * dt;
+      if (c.life < 1) c.mesh.material.opacity = c.life;
+    }
+    if (confettiPieces.length === 0) confettiActive = false;
+  }
+
+  // ───────── Rotating Obstacles ─────────
+  const spinners = [];
+
+  function addSpinner(x, y, z, armLength, speed) {
+    const armGeo = new THREE.BoxGeometry(armLength * 2, 0.6, 0.6);
+    const armMat = new THREE.MeshStandardMaterial({ color: 0xff8800, roughness: 0.3, metalness: 0.5, emissive: 0xff4400, emissiveIntensity: 0.1 });
+    const armMesh = new THREE.Mesh(armGeo, armMat);
+    armMesh.position.set(x, y + 0.5, z);
+    armMesh.castShadow = true;
+    scene.add(armMesh);
+
+    const postGeo = new THREE.CylinderGeometry(0.2, 0.2, 1.5, 8);
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x666666 });
+    const post = new THREE.Mesh(postGeo, postMat);
+    post.position.set(x, y + 0.3, z);
+    scene.add(post);
+
+    const armBody = new CANNON.Body({ mass: 0, material: matTrack, type: CANNON.Body.KINEMATIC });
+    armBody.addShape(new CANNON.Box(new CANNON.Vec3(armLength, 0.3, 0.3)));
+    armBody.position.set(x, y + 0.5, z);
+    world.addBody(armBody);
+
+    spinners.push({ mesh: armMesh, body: armBody, x, y: y + 0.5, z, speed, angle: Math.random() * Math.PI * 2 });
+  }
+
+  function updateSpinners(dt) {
+    spinners.forEach((s) => {
+      s.angle += s.speed * dt;
+      s.mesh.rotation.y = s.angle;
+      s.body.quaternion.setFromEulerAngles(0, s.angle, 0);
+    });
   }
 
   // ───────── Audio ─────────
@@ -806,6 +987,7 @@
 
   function handleCountdown(dt) {
     state.cdTimer += dt;
+    updateSpinners(dt);
     // Step physics during countdown so marbles settle
     world.step(PHYSICS_DT, dt, MAX_SUBSTEPS);
     syncMeshes();
@@ -815,9 +997,9 @@
       state.cdValue--;
       if (state.cdValue > 0) {
         countdownEl.textContent = String(state.cdValue);
-        countdownEl.className = "countdown";
+        countdownEl.style.animation = "none";
         void countdownEl.offsetHeight;
-        countdownEl.className = "countdown";
+        countdownEl.style.animation = "";
         beep(440, 0.15, 0.15);
       } else if (state.cdValue === 0) {
         countdownEl.textContent = "BAŞLA!";
@@ -836,10 +1018,19 @@
 
   function handleRacing(dt) {
     state.raceTime += dt;
+    rotateCameraAngle(dt);
 
-    // Random perturbations for excitement
+    updateSpinners(dt);
+
+    // Boost zones & random perturbations
     state.marbles.forEach((m) => {
-      if (!m.finished && Math.random() < 0.015) {
+      if (m.finished) return;
+      const pz = m.body.position.z;
+      // Boost zones at z=50, z=238, z=345
+      if ((pz > 47 && pz < 53) || (pz > 235 && pz < 241) || (pz > 342 && pz < 348)) {
+        m.body.applyForce(new CANNON.Vec3(0, 0, 8), m.body.position);
+      }
+      if (Math.random() < 0.015) {
         const fx = (Math.random() - 0.5) * 1.2;
         const fz = (Math.random() - 0.5) * 0.6;
         m.body.applyForce(new CANNON.Vec3(fx, 0, fz), m.body.position);
@@ -885,6 +1076,13 @@
     timeValEl.textContent = state.raceTime.toFixed(1);
 
     updateParticles(dt);
+    updateConfetti(dt);
+
+    // Spawn confetti when first marble finishes
+    if (state.finishOrder.length === 1 && !confettiActive) {
+      const fw = trackWP[trackWP.length - 1];
+      spawnConfetti(new THREE.Vector3(fw.x, fw.y, fw.z - 3));
+    }
 
     // Check race end
     if (state.finishOrder.length >= MARBLE_DEFS.length) {
@@ -908,6 +1106,9 @@
     state.marbles.forEach((m) => {
       m.mesh.position.set(m.body.position.x, m.body.position.y, m.body.position.z);
       m.mesh.quaternion.set(m.body.quaternion.x, m.body.quaternion.y, m.body.quaternion.z, m.body.quaternion.w);
+      if (state.phase === "racing" || state.phase === "finished") {
+        updateTrail(m.trail, m.mesh.position);
+      }
     });
   }
 
@@ -943,6 +1144,8 @@
         world.step(PHYSICS_DT, dt, MAX_SUBSTEPS);
         syncMeshes();
         updateParticles(dt);
+        updateConfetti(dt);
+        updateSpinners(dt);
         break;
     }
 
@@ -962,8 +1165,9 @@
 
   // ───────── Init ─────────
   buildTrack();
-  createMarbles();
   addDecorations();
+  generateEnvMap();
+  createMarbles();
   populateMarbleGrid();
   loop();
 })();
