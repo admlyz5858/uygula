@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="start_focus" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="Start focus" android:shortcutLongLabel="Start a focus session">
+        <intent android:action="android.intent.action.VIEW" android:targetClass="com.focus.pomodoro.MainActivity" android:targetPackage="com.focus.pomodoro" />
+    </shortcut>
+    <shortcut android:shortcutId="open_ai_planner" android:enabled="true" android:icon="@mipmap/ic_launcher" android:shortcutShortLabel="AI planner" android:shortcutLongLabel="Open the AI planner">
+        <intent android:action="android.intent.action.VIEW" android:targetClass="com.focus.pomodoro.MainActivity" android:targetPackage="com.focus.pomodoro" />
+    </shortcut>
+</shortcuts>

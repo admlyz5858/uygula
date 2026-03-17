@@ -1,0 +1,5 @@
+-keep class androidx.lifecycle.** { *; }
+-keep class androidx.room.RoomDatabase { *; }
+-keep class com.focus.pomodoro.data.local.** { *; }
+-keep class com.arthenica.ffmpegkit.** { *; }
+-dontwarn com.arthenica.ffmpegkit.**
