@@ -239,6 +239,8 @@ const BREAK_QUOTES = [
   "Your world is growing with every session.",
 ];
 
+const BUILD_LABEL = "Build 1.3.0";
+
 function formatClock(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -951,6 +953,7 @@ function App() {
           <div>
             <h1 className="text-3xl font-black tracking-tight md:text-4xl">🔥 FOCUS UNIVERSE</h1>
             <p className="text-sm text-slate-200/90">Game + Meditation + Productivity System</p>
+            <p className="text-xs font-medium text-cyan-200/90">{BUILD_LABEL}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {(["system", "light", "dark"] as ThemeMode[]).map((item) => (
