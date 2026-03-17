@@ -1,3 +1,14 @@
+*.iml
+.gradle/
+.tooling/
+.android-sdk/
+android-sdk/
+local.properties
+.idea/
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+app/build/
 node_modules/
 dist/
-android-sdk/

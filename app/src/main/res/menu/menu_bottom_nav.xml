@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/nav_home" android:icon="@android:drawable/ic_lock_idle_alarm" android:title="Timer" />
+    <item android:id="@+id/nav_tasks" android:icon="@android:drawable/ic_menu_agenda" android:title="Tasks" />
+    <item android:id="@+id/nav_ai" android:icon="@android:drawable/ic_menu_manage" android:title="AI" />
+    <item android:id="@+id/nav_stats" android:icon="@android:drawable/ic_menu_today" android:title="Stats" />
+    <item android:id="@+id/nav_history" android:icon="@android:drawable/ic_menu_recent_history" android:title="History" />
+    <item android:id="@+id/nav_settings" android:icon="@android:drawable/ic_menu_preferences" android:title="Settings" />
+</menu>

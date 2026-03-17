@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Focus Pomodoro AI</string>
+    <string name="add_task">Add task</string>
+    <string name="delete_task">Delete task</string>
+    <string name="clear_filter">Clear filter</string>
+    <string name="timer_channel_name">Timer controls</string>
+    <string name="alerts_channel_name">Alerts</string>
+    <string name="render_channel_name">Video rendering</string>
+    <string name="shortcut_start_short">Start focus</string>
+    <string name="shortcut_start_long">Start a focus session</string>
+    <string name="shortcut_ai_short">AI planner</string>
+    <string name="shortcut_ai_long">Open the AI planner</string>
+</resources>

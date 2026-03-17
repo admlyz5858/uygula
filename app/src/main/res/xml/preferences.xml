@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory android:title="Pomodoro durations">
+        <EditTextPreference android:key="focus_minutes" android:title="Focus minutes" app:useSimpleSummaryProvider="true" android:defaultValue="25" />
+        <EditTextPreference android:key="short_break_minutes" android:title="Short break minutes" app:useSimpleSummaryProvider="true" android:defaultValue="5" />
+        <EditTextPreference android:key="long_break_minutes" android:title="Long break minutes" app:useSimpleSummaryProvider="true" android:defaultValue="15" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Experience">
+        <SwitchPreferenceCompat android:key="ai_enabled" android:title="Enable AI planner" android:defaultValue="true" />
+        <SwitchPreferenceCompat android:key="sound_enabled" android:title="Bell sound alerts" android:defaultValue="true" />
+        <SwitchPreferenceCompat android:key="ambient_enabled" android:title="Loop ambient sound during focus" android:defaultValue="false" />
+        <SwitchPreferenceCompat android:key="notifications_enabled" android:title="Notifications" android:defaultValue="true" />
+        <SwitchPreferenceCompat android:key="lock_screen_overlay" android:title="Full-screen lock overlay" android:defaultValue="false" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Appearance">
+        <ListPreference android:key="theme_mode" android:title="Theme" android:defaultValue="system" android:entries="@array/theme_entries" android:entryValues="@array/theme_values" app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+</PreferenceScreen>
