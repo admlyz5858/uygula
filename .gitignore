@@ -2,6 +2,7 @@
 .gradle/
 .tooling/
 .android-sdk/
+android-sdk/
 local.properties
 .idea/
 /build/
@@ -9,3 +10,5 @@ local.properties
 .externalNativeBuild/
 .cxx/
 app/build/
+node_modules/
+dist/
