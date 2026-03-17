@@ -122,7 +122,7 @@ dependencies {
     implementation("androidx.media3:media3-session:1.4.1")
     implementation("androidx.media:media:1.7.0")
 
-    implementation("com.arthenica:ffmpeg-kit-full:6.0-2")
+    implementation("io.github.pao11:ffmpeg-android:1.1.0")
 
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 
