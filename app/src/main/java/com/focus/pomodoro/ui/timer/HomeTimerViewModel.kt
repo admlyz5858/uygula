@@ -7,7 +7,6 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.focus.pomodoro.R
-import com.focus.pomodoro.ai.AIService
 import com.focus.pomodoro.data.repository.NatureRepository
 import com.focus.pomodoro.data.repository.QuotesRepository
 import com.focus.pomodoro.data.repository.SettingsRepository
@@ -20,9 +19,11 @@ import java.io.File
 import java.time.LocalDate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -48,7 +49,7 @@ class HomeTimerViewModel(
             backgroundRes = natureRepository.backgroundForTimestamp(now),
             confettiBursts = confetti,
         )
-    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), HomeTimerUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeTimerUiState())
 
     init {
         viewModelScope.launch {

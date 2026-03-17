@@ -88,8 +88,7 @@ class AIService(
     }
 
     private fun offlinePlan(input: String): AiPlan {
-        val chunks = input.split(',', ';', '
-').flatMap { piece -> piece.split(" and ") }
+        val chunks = input.split(',', ';', '\n').flatMap { piece -> piece.split(" and ") }
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .ifEmpty { listOf(input) }

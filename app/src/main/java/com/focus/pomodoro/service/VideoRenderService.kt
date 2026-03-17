@@ -55,7 +55,7 @@ class VideoRenderService : Service() {
                 serviceScope.launch {
                     container.settingsRepository.persistLastRenderedVideo(outputFile.absolutePath)
                 }
-                val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", outputFile)
+                FileProvider.getUriForFile(this, "$packageName.fileprovider", outputFile)
                 val contentIntent = PendingIntent.getActivity(
                     this,
                     301,
@@ -79,15 +79,23 @@ class VideoRenderService : Service() {
 
     private fun buildFfmpegCommand(backgroundFile: File, audioFile: File, outputFile: File, durationSeconds: Int): String {
         val fontPath = "/system/fonts/Roboto-Regular.ttf"
-        val escapedOutput = outputFile.absolutePath
+        val filter = buildString {
+            append("scale=3840:2160:force_original_aspect_ratio=increase,")
+            append("crop=3840:2160,")
+            append("drawbox=x=192:y=1880:w=3396:h=20:color=white@0.25:t=fill,")
+            append("drawbox=x=192:y=1880:w='3396*(t/$durationSeconds)':h=20:color=0x73D9BA@0.95:t=fill,")
+            append("drawtext=fontfile=$fontPath:text='Focus Pomodoro AI':fontcolor=white@0.92:fontsize=72:x=(w-text_w)/2:y=240,")
+            append("drawtext=fontfile=$fontPath:text='%{eif\\\\:trunc(($durationSeconds-t)/60)\\\\:d\\\\:2}\\\\:%{eif\\\\:mod(trunc($durationSeconds-t)\\,60)\\\\:d\\\\:2}':")
+            append("fontcolor=white:fontsize=220:x=(w-text_w)/2:y=(h-text_h)/2")
+        }
         return listOf(
             "-y",
             "-loop 1",
-            "-i ${backgroundFile.absolutePath}",
+            "-i \"${backgroundFile.absolutePath}\"",
             "-stream_loop -1",
-            "-i ${audioFile.absolutePath}",
+            "-i \"${audioFile.absolutePath}\"",
             "-t $durationSeconds",
-            "-vf "scale=3840:2160:force_original_aspect_ratio=increase,crop=3840:2160,drawbox=x=192:y=1880:w=3396:h=20:color=white@0.25:t=fill,drawbox=x=192:y=1880:w='3396*(t/$durationSeconds)':h=20:color=0x73D9BA@0.95:t=fill,drawtext=fontfile=$fontPath:text='Focus Pomodoro AI':fontcolor=white@0.92:fontsize=72:x=(w-text_w)/2:y=240,drawtext=fontfile=$fontPath:text='%{eif\:trunc(($durationSeconds-t)/60)\:d\:2}\:%{eif\:mod(trunc($durationSeconds-t)\,60)\:d\:2}':fontcolor=white:fontsize=220:x=(w-text_w)/2:y=(h-text_h)/2"",
+            "-vf \"$filter\"",
             "-c:v libx264",
             "-preset veryfast",
             "-r 30",
@@ -95,7 +103,7 @@ class VideoRenderService : Service() {
             "-c:a aac",
             "-b:a 192k",
             "-shortest",
-            escapedOutput,
+            "\"${outputFile.absolutePath}\"",
         ).joinToString(" ")
     }
 

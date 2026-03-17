@@ -99,7 +99,7 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.media:media:1.7.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.arthenica:ffmpeg-kit-full:6.0-2")
+    implementation("com.moizhassan.ffmpeg:ffmpeg-kit-16kb:6.1.1")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 

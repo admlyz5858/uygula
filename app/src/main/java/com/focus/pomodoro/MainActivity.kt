@@ -3,12 +3,12 @@ package com.focus.pomodoro
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.asLiveData
-import androidx.viewbinding.ViewBinding
+import androidx.lifecycle.map
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.focus.pomodoro.databinding.ActivityMainBinding
 import com.focus.pomodoro.domain.model.ThemeMode
 import com.focus.pomodoro.ui.ai.AIPlannerFragment
@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        androidx.core.splashscreen.SplashScreen.installSplashScreen(this)
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -38,6 +38,7 @@ class MainActivity : AppCompatActivity() {
                 ThemeMode.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
                 ThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
                 ThemeMode.SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                null -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
             }
             AppCompatDelegate.setDefaultNightMode(delegateMode)
         }
@@ -84,5 +85,6 @@ class MainViewModel(settingsRepository: com.focus.pomodoro.data.repository.Setti
 class SimpleViewModelFactory<T : ViewModel>(
     private val creator: () -> T,
 ) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
     override fun <VM : ViewModel> create(modelClass: Class<VM>): VM = creator() as VM
 }

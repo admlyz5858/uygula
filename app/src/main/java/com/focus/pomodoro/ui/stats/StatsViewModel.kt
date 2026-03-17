@@ -1,9 +1,9 @@
 package com.focus.pomodoro.ui.stats
 
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.Transformations
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asLiveData
+import androidx.lifecycle.map
 import com.focus.pomodoro.data.local.entity.FocusSessionEntity
 import com.focus.pomodoro.data.repository.SessionRepository
 import com.focus.pomodoro.domain.model.StatsSnapshot
@@ -15,7 +15,7 @@ class StatsViewModel(
     sessionRepository: SessionRepository,
 ) : ViewModel() {
     val sessions: LiveData<List<FocusSessionEntity>> = sessionRepository.observeAllSessions().asLiveData()
-    val stats: LiveData<StatsSnapshot> = Transformations.map(sessions) { sessions ->
+    val stats: LiveData<StatsSnapshot> = sessions.map { sessions ->
         buildStats(sessions)
     }
 
