@@ -69,7 +69,7 @@ class MarbleRaceApp {
         this.setupCanvas();
 
         this.touch = new TouchController(this.canvas, this.renderer.camera);
-        this.touch.onTap = (x, y) => this.handleTap(x, y);
+        this.touch.onTap = (canvasX, canvasY) => this.handleTap(canvasX, canvasY);
 
         setupVisibilityHandler(
             () => { this.paused = false; },
@@ -156,15 +156,28 @@ class MarbleRaceApp {
         this.engine.paused = true;
     }
 
-    handleTap(screenX, screenY) {
+    handleTap(canvasX, canvasY) {
         const w = this.canvas.width, h = this.canvas.height, d = this.dpr;
 
         if (this.state === 'menu') {
-            this.handleMenuTap(screenX, screenY);
+            this.handleMenuTap(canvasX, canvasY);
             return;
         }
         if (this.state === 'ready') {
+            this.audio.init();
             this.startCountdown();
+            return;
+        }
+        if (this.state === 'racing') {
+            const world = this.renderer.camera.screenToWorld(canvasX, canvasY);
+            const closest = this.findClosestMarble(world.x, world.y, 60);
+            if (closest) {
+                this.renderer.camera.focusOn(closest);
+                setTimeout(() => {
+                    this.renderer.camera.setMode('static');
+                    if (this.trackBounds) this.renderer.camera.setTrackBounds(this.trackBounds);
+                }, 3000);
+            }
             return;
         }
         if (this.state === 'finished') {
@@ -174,7 +187,7 @@ class MarbleRaceApp {
             const btns = [baseY, baseY + btnH + 14 * d, baseY + (btnH + 14 * d) * 2];
             for (let i = 0; i < btns.length; i++) {
                 const by = btns[i];
-                if (screenX > cx - btnW && screenX < cx + btnW && screenY > by - btnH / 2 && screenY < by + btnH / 2) {
+                if (canvasX > cx - btnW && canvasX < cx + btnW && canvasY > by - btnH / 2 && canvasY < by + btnH / 2) {
                     if (i === 0) { if (this.currentLevel < 50) this.loadLevel(this.currentLevel + 1); else this.state = 'menu'; }
                     if (i === 1) this.loadLevel(this.currentLevel);
                     if (i === 2) this.state = 'menu';

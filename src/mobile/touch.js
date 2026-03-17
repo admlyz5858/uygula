@@ -5,13 +5,11 @@ export class TouchController {
         this.touches = new Map();
         this.lastPinchDist = 0;
         this.isPanning = false;
-        this.panStartX = 0;
-        this.panStartY = 0;
         this.onTap = null;
-        this.onSwipe = null;
-        this.tapTimeout = null;
-        this.tapX = 0;
-        this.tapY = 0;
+        this.mouseDown = false;
+        this.mouseMoved = false;
+        this.mouseStartX = 0;
+        this.mouseStartY = 0;
         this.enabled = true;
         this.bindEvents();
     }
@@ -29,16 +27,25 @@ export class TouchController {
         c.addEventListener('mouseup', e => this.onMouseUp(e));
     }
 
+    getCanvasCoords(clientX, clientY) {
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY,
+        };
+    }
+
     onTouchStart(e) {
         if (!this.enabled) return;
         e.preventDefault();
         for (const t of e.changedTouches) {
-            this.touches.set(t.identifier, { x: t.clientX, y: t.clientY, startX: t.clientX, startY: t.clientY, startTime: performance.now() });
-        }
-        if (this.touches.size === 1) {
-            const t = [...this.touches.values()][0];
-            this.tapX = t.x;
-            this.tapY = t.y;
+            this.touches.set(t.identifier, {
+                x: t.clientX, y: t.clientY,
+                startX: t.clientX, startY: t.clientY,
+                startTime: performance.now(),
+            });
         }
         if (this.touches.size === 2) {
             const pts = [...this.touches.values()];
@@ -60,10 +67,6 @@ export class TouchController {
             const dx = t.x - t.startX;
             const dy = t.y - t.startY;
             if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-                this.camera.panOffsetX -= dx * 0.5 / this.camera.zoom;
-                this.camera.panOffsetY -= dy * 0.5 / this.camera.zoom;
-                t.startX = t.x;
-                t.startY = t.y;
                 this.isPanning = true;
             }
         }
@@ -87,16 +90,9 @@ export class TouchController {
                 const dx = t.clientX - touch.startX;
                 const dy = t.clientY - touch.startY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                if (elapsed < 300 && dist < 15 && !this.isPanning) {
-                    if (this.onTap) {
-                        const rect = this.canvas.getBoundingClientRect();
-                        const scaleX = this.canvas.width / rect.width;
-                        const scaleY = this.canvas.height / rect.height;
-                        const canvasX = (t.clientX - rect.left) * scaleX;
-                        const canvasY = (t.clientY - rect.top) * scaleY;
-                        const world = this.camera.screenToWorld(canvasX, canvasY);
-                        this.onTap(world.x, world.y);
-                    }
+                if (elapsed < 400 && dist < 20 && !this.isPanning && this.onTap) {
+                    const canvas = this.getCanvasCoords(t.clientX, t.clientY);
+                    this.onTap(canvas.x, canvas.y);
                 }
                 this.touches.delete(t.identifier);
             }
@@ -108,9 +104,7 @@ export class TouchController {
     }
 
     getPinchDist(a, b) {
-        const dx = a.x - b.x;
-        const dy = a.y - b.y;
-        return Math.sqrt(dx * dx + dy * dy);
+        return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
     }
 
     onWheel(e) {
@@ -131,8 +125,6 @@ export class TouchController {
         const dy = e.clientY - this.mouseStartY;
         if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
             this.mouseMoved = true;
-            this.camera.panOffsetX -= dx * 0.5 / this.camera.zoom;
-            this.camera.panOffsetY -= dy * 0.5 / this.camera.zoom;
             this.mouseStartX = e.clientX;
             this.mouseStartY = e.clientY;
         }
@@ -140,13 +132,8 @@ export class TouchController {
 
     onMouseUp(e) {
         if (this.mouseDown && !this.mouseMoved && this.onTap) {
-            const rect = this.canvas.getBoundingClientRect();
-            const scaleX = this.canvas.width / rect.width;
-            const scaleY = this.canvas.height / rect.height;
-            const canvasX = (e.clientX - rect.left) * scaleX;
-            const canvasY = (e.clientY - rect.top) * scaleY;
-            const world = this.camera.screenToWorld(canvasX, canvasY);
-            this.onTap(world.x, world.y);
+            const canvas = this.getCanvasCoords(e.clientX, e.clientY);
+            this.onTap(canvas.x, canvas.y);
         }
         this.mouseDown = false;
     }
