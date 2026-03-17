@@ -44,15 +44,20 @@ export function applyRollingFriction(marble, normal, material) {
     if (!marble.isOnGround) return;
     const resistance = material.rollingResistance;
     const normalForce = marble.mass * GRAVITY;
-    const frictionTorque = -Math.sign(marble.angularVelocity) * resistance * normalForce * marble.radius;
-    marble.torque += frictionTorque;
+    const torqueMag = resistance * normalForce * marble.radius;
+    if (Math.abs(marble.angularVelocity) > 0.01) {
+        marble.angularVelocity -= Math.sign(marble.angularVelocity) * torqueMag * marble.invInertia * (1/120);
+    }
     const tx = -normal.y;
+    const ty = normal.x;
     const surfaceSpeed = marble.angularVelocity * marble.radius;
-    const slip = marble.vx * tx + marble.vy * (-normal.x) - surfaceSpeed;
+    const linearSurface = marble.vx * tx + marble.vy * ty;
+    const slip = linearSurface - surfaceSpeed;
     if (Math.abs(slip) > 1) {
-        const correction = -slip * 0.05 * material.dynamicFriction;
-        marble.fx += correction * tx * marble.mass;
-        marble.fy += correction * (-normal.x) * marble.mass;
+        const correction = -slip * 0.03 * material.dynamicFriction;
+        marble.vx += correction * tx;
+        marble.vy += correction * ty;
+        marble.angularVelocity += correction * marble.radius * marble.invInertia * marble.mass * 0.1;
     }
 }
 

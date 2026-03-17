@@ -148,9 +148,6 @@ export class PhysicsEngine {
                 applyRollingFriction(marble, marble.contactNormal, marble.material);
             }
 
-            marble.vx += (marble.fx * marble.invMass) * dt * 0;
-            marble.vy += (marble.fy * marble.invMass) * dt * 0;
-
             const speed = Math.sqrt(marble.vx * marble.vx + marble.vy * marble.vy);
             if (speed > MAX_VELOCITY) {
                 const scale = MAX_VELOCITY / speed;

@@ -8,7 +8,16 @@
         "start": "npx serve . -l 3000",
         "build:web": "rm -rf dist && mkdir -p dist/src/physics dist/src/render dist/src/procedural dist/src/ai dist/src/mobile dist/src/audio dist/src/replay && cp index.html styles.css app.js manifest.webmanifest icon.svg sw.js dist/ && cp src/physics/*.js dist/src/physics/ && cp src/render/*.js dist/src/render/ && cp src/procedural/*.js dist/src/procedural/ && cp src/ai/*.js dist/src/ai/ && cp src/mobile/*.js dist/src/mobile/ && cp src/audio/*.js dist/src/audio/ && cp src/replay/*.js dist/src/replay/"
     },
-    "keywords": ["marble", "race", "physics", "simulation", "game"],
+    "keywords": [
+        "marble",
+        "race",
+        "physics",
+        "simulation",
+        "game"
+    ],
     "author": "",
-    "license": "ISC"
+    "license": "ISC",
+    "devDependencies": {
+        "serve": "^14.2.6"
+    }
 }

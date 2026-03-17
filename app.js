@@ -1,7 +1,6 @@
 import { PhysicsEngine } from './src/physics/engine.js';
 import { Marble } from './src/physics/marble.js';
 import { Renderer } from './src/render/renderer.js';
-import { Camera } from './src/render/camera.js';
 import { buildTrack } from './src/procedural/track.js';
 import { MarbleAI } from './src/ai/behavior.js';
 import { TouchController } from './src/mobile/touch.js';
@@ -14,16 +13,18 @@ const MARBLE_NAMES = [
     'Cyan', 'Coral', 'Lime', 'Indigo', 'Rose',
     'Teal', 'Gold', 'Scarlet', 'Azure', 'Orchid',
     'Ruby', 'Jade', 'Cobalt', 'Tangerine', 'Magenta',
+    'Flame', 'Forest', 'Ocean', 'Sunset', 'Nebula',
+    'Arctic', 'Peach', 'Mint', 'Storm', 'Lava',
 ];
 
 const AI_TYPES = ['aggressive', 'balanced', 'safe', 'random'];
 
 class MarbleRaceApp {
     constructor() {
-        this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d', { alpha: false });
-        this.engine = new PhysicsEngine();
-        this.renderer = new Renderer(this.canvas);
+        this.initialized = false;
+        this.canvas = null;
+        this.engine = null;
+        this.renderer = null;
         this.audio = new AudioEngine();
         this.perf = new PerformanceMonitor();
         this.replay = new ReplaySystem();
@@ -35,26 +36,35 @@ class MarbleRaceApp {
         this.finishY = 0;
         this.rankings = [];
         this.nextRank = 1;
-        this.seed = Date.now();
+        this.seed = Math.floor(Math.random() * 99999);
         this.marbleCount = 12;
         this.lastFrameTime = 0;
         this.running = false;
         this.paused = false;
         this.showLeaderboard = true;
         this.showFPS = false;
-        this.autoRestart = false;
+        this.dpr = 1;
         this.uiElements = {};
+        this.panelOpen = true;
     }
 
-    async init() {
+    init() {
+        if (this.initialized) return;
+        this.initialized = true;
+
+        this.canvas = document.getElementById('gameCanvas');
+        if (!this.canvas) return;
+
+        this.engine = new PhysicsEngine();
+        this.renderer = new Renderer(this.canvas);
+
         this.setupCanvas();
         this.setupUI();
+
         this.touch = new TouchController(this.canvas, this.renderer.camera);
         this.touch.onTap = (x, y) => this.handleTap(x, y);
 
-        this.perf.onQualityChange = (level) => {
-            this.renderer.setQuality(level);
-        };
+        this.perf.onQualityChange = (level) => this.renderer.setQuality(level);
 
         setupVisibilityHandler(
             () => { this.paused = false; this.audio.resume(); },
@@ -70,15 +80,16 @@ class MarbleRaceApp {
     }
 
     setupCanvas() {
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
         const w = window.innerWidth;
         const h = window.innerHeight;
-        this.canvas.width = w * dpr;
-        this.canvas.height = h * dpr;
+        this.canvas.width = Math.floor(w * this.dpr);
+        this.canvas.height = Math.floor(h * this.dpr);
         this.canvas.style.width = w + 'px';
         this.canvas.style.height = h + 'px';
-        this.ctx.scale(dpr, dpr);
-        this.renderer.resize(w * dpr, h * dpr);
+        if (this.renderer) {
+            this.renderer.resize(this.canvas.width, this.canvas.height);
+        }
     }
 
     setupUI() {
@@ -94,14 +105,21 @@ class MarbleRaceApp {
             leaderboardToggle: document.getElementById('leaderboardToggle'),
             replayBtn: document.getElementById('replayBtn'),
             newSeedBtn: document.getElementById('newSeedBtn'),
+            panelToggle: document.getElementById('panelToggle'),
+            controlPanel: document.getElementById('controlPanel'),
         };
 
         const ui = this.uiElements;
-
-        if (ui.startBtn) ui.startBtn.addEventListener('click', () => this.startRace());
-        if (ui.restartBtn) ui.restartBtn.addEventListener('click', () => this.startNewRace());
+        if (ui.startBtn) ui.startBtn.addEventListener('click', () => {
+            this.audio.init();
+            this.startRace();
+        });
+        if (ui.restartBtn) ui.restartBtn.addEventListener('click', () => {
+            this.audio.init();
+            this.startNewRace();
+        });
         if (ui.newSeedBtn) ui.newSeedBtn.addEventListener('click', () => {
-            this.seed = Date.now();
+            this.seed = Math.floor(Math.random() * 99999);
             if (ui.seedInput) ui.seedInput.value = this.seed;
             this.startNewRace();
         });
@@ -111,11 +129,14 @@ class MarbleRaceApp {
             this.renderer.camera.panOffsetY = 0;
         });
         if (ui.speedSelect) ui.speedSelect.addEventListener('change', (e) => {
-            this.engine.slowMotion = parseFloat(e.target.value);
+            const val = parseFloat(e.target.value);
+            if (this.engine) this.engine.slowMotion = val;
         });
         if (ui.muteBtn) ui.muteBtn.addEventListener('click', () => {
-            this.audio.setMuted(!this.audio.muted);
-            ui.muteBtn.textContent = this.audio.muted ? '🔇' : '🔊';
+            this.audio.init().then(() => {
+                this.audio.setMuted(!this.audio.muted);
+                ui.muteBtn.textContent = this.audio.muted ? '🔇' : '🔊';
+            });
         });
         if (ui.fpsToggle) ui.fpsToggle.addEventListener('click', () => {
             this.showFPS = !this.showFPS;
@@ -124,6 +145,11 @@ class MarbleRaceApp {
             this.showLeaderboard = !this.showLeaderboard;
         });
         if (ui.replayBtn) ui.replayBtn.addEventListener('click', () => this.toggleReplay());
+        if (ui.panelToggle) ui.panelToggle.addEventListener('click', () => {
+            this.panelOpen = !this.panelOpen;
+            if (ui.controlPanel) ui.controlPanel.classList.toggle('collapsed', !this.panelOpen);
+        });
+
         if (ui.seedInput) ui.seedInput.value = this.seed;
         if (ui.marbleCountInput) ui.marbleCountInput.value = this.marbleCount;
     }
@@ -137,12 +163,13 @@ class MarbleRaceApp {
         this.raceState = 'countdown';
         this.countdownTimer = 3;
 
-        if (this.uiElements.seedInput) {
-            const val = parseInt(this.uiElements.seedInput.value);
-            if (!isNaN(val)) this.seed = val;
+        const ui = this.uiElements;
+        if (ui.seedInput) {
+            const val = parseInt(ui.seedInput.value);
+            if (!isNaN(val) && val > 0) this.seed = val;
         }
-        if (this.uiElements.marbleCountInput) {
-            const val = parseInt(this.uiElements.marbleCountInput.value);
+        if (ui.marbleCountInput) {
+            const val = parseInt(ui.marbleCountInput.value);
             if (!isNaN(val) && val >= 2 && val <= 30) this.marbleCount = val;
         }
 
@@ -150,9 +177,13 @@ class MarbleRaceApp {
         this.finishY = trackData.finishY;
 
         for (let i = 0; i < this.marbleCount; i++) {
-            const pos = trackData.startPositions[i] || { x: (Math.random() - 0.5) * 200, y: -50 - i * 25 };
+            const pos = trackData.startPositions[i] || {
+                x: (Math.random() - 0.5) * 150,
+                y: -30 - i * 25,
+            };
             const color = this.renderer.getMarbleColor(i);
-            const marble = new Marble(pos.x, pos.y, 10 + Math.random() * 4, {
+            const radius = 10 + (i % 3);
+            const marble = new Marble(pos.x, pos.y, radius, {
                 color,
                 glowColor: color,
                 name: MARBLE_NAMES[i % MARBLE_NAMES.length],
@@ -165,55 +196,50 @@ class MarbleRaceApp {
 
         this.engine.paused = true;
         this.renderer.camera.setMode('follow_pack');
-        this.renderer.camera.targetZoom = 0.6;
-        this.renderer.camera.x = 0;
-        this.renderer.camera.y = trackData.startPositions[0]?.y || 0;
+        this.renderer.camera.targetZoom = 0.7;
+        this.renderer.camera.zoom = 0.5;
+        const startPos = trackData.startPositions[0] || { x: 0, y: 0 };
+        this.renderer.camera.x = startPos.x;
+        this.renderer.camera.y = startPos.y;
+        this.renderer.camera.targetX = startPos.x;
+        this.renderer.camera.targetY = startPos.y;
 
         this.replay.startRecording();
-
-        this.audio.init().then(() => {
-            this.audio.startMusic();
-        });
-
-        this.updateRankingsUI();
+        this.audio.init().then(() => this.audio.startMusic());
+        this.updateRankingsDOM();
     }
 
     startRace() {
-        if (this.raceState === 'countdown' || this.raceState === 'idle') {
-            this.raceState = 'countdown';
-            this.countdownTimer = 3;
-            this.engine.paused = true;
-        }
+        if (this.raceState !== 'countdown' && this.raceState !== 'idle') return;
+        this.raceState = 'countdown';
+        this.countdownTimer = 3;
+        this.engine.paused = true;
     }
 
     handleTap(x, y) {
+        this.audio.init();
         if (this.raceState === 'idle') {
             this.startRace();
             return;
         }
-        const closest = this.findClosestMarble(x, y);
+        const closest = this.findClosestMarble(x, y, 50);
         if (closest && this.raceState === 'racing') {
             this.renderer.camera.focusOn(closest);
-            setTimeout(() => {
-                this.renderer.camera.setMode('follow_leader');
-            }, 3000);
+            setTimeout(() => this.renderer.camera.setMode('follow_leader'), 3000);
         }
     }
 
-    findClosestMarble(x, y) {
+    findClosestMarble(x, y, maxDist = 50) {
         let best = null;
-        let bestDist = Infinity;
+        let bestDist = maxDist * maxDist;
         for (const m of this.engine.marbles) {
             if (!m.alive) continue;
             const dx = m.x - x;
             const dy = m.y - y;
-            const d = dx * dx + dy * dy;
-            if (d < bestDist) {
-                bestDist = d;
-                best = m;
-            }
+            const d2 = dx * dx + dy * dy;
+            if (d2 < bestDist) { bestDist = d2; best = m; }
         }
-        return bestDist < 2500 ? best : null;
+        return best;
     }
 
     toggleReplay() {
@@ -230,7 +256,8 @@ class MarbleRaceApp {
         if (!this.running) return;
         this.perf.startFrame();
 
-        const dt = Math.min((timestamp - this.lastFrameTime) / 1000, 0.05);
+        const rawDt = (timestamp - this.lastFrameTime) / 1000;
+        const dt = Math.min(rawDt, 0.05);
         this.lastFrameTime = timestamp;
 
         if (!this.paused) {
@@ -269,13 +296,15 @@ class MarbleRaceApp {
             return;
         }
 
-        this.raceTimer += dt;
-        const timeScale = this.renderer.slowMo.getScale();
-        this.engine.slowMotion = timeScale;
-        this.engine.update(dt);
+        if (this.raceState === 'racing') {
+            this.raceTimer += dt;
+            const timeScale = this.renderer.slowMo.getScale();
+            this.engine.slowMotion = timeScale * (parseFloat(this.uiElements.speedSelect?.value) || 1);
+            this.engine.update(dt);
 
-        for (const ai of this.ais) {
-            ai.update(dt, this.engine.time, this.engine);
+            for (const ai of this.ais) {
+                ai.update(dt, this.engine.time, this.engine);
+            }
         }
 
         for (const marble of this.engine.marbles) {
@@ -287,55 +316,72 @@ class MarbleRaceApp {
                 marble.finishTime = this.raceTimer;
                 marble.rank = this.nextRank++;
                 this.rankings.push(marble);
-                this.updateRankingsUI();
+                this.updateRankingsDOM();
 
                 if (marble.rank === 1) {
-                    this.renderer.slowMo.trigger(0.3, 2);
-                    this.renderer.camera.shake(15);
-                    this.renderer.flash.trigger('#fff', 0.2);
+                    this.renderer.slowMo.trigger(0.25, 2.5);
+                    this.renderer.camera.shake(20);
+                    this.renderer.flash.trigger('#fff', 0.25);
                     this.audio.playFinish(1);
                     this.renderer.camera.dramaticFinishZoom = true;
-                    setTimeout(() => {
-                        this.renderer.camera.dramaticFinishZoom = false;
-                    }, 3000);
+                    setTimeout(() => { this.renderer.camera.dramaticFinishZoom = false; }, 3500);
+                } else if (marble.rank <= 3) {
+                    this.renderer.camera.shake(8);
+                    this.audio.playFinish(marble.rank);
                 } else {
                     this.audio.playFinish(marble.rank);
                 }
             }
 
-            if (marble.y > this.finishY + 500 || marble.y < -1000 ||
-                marble.x < -2000 || marble.x > 2000) {
+            if (marble.y > this.finishY + 500 || marble.y < -2000 ||
+                marble.x < -3000 || marble.x > 3000) {
                 if (!marble.finished) {
+                    marble.finished = true;
+                    marble.finishTime = this.raceTimer;
+                    marble.rank = this.nextRank++;
+                    this.rankings.push(marble);
                     marble.alive = false;
+                    this.updateRankingsDOM();
                 }
             }
         }
 
         for (const event of this.engine.events) {
-            if (event.type === 'collision' && event.force > 100) {
+            if (event.type === 'collision' && event.force > 80) {
                 this.renderer.particles.emitCollision(
-                    event.x, event.y, event.nx, event.ny, event.force, event.marble.color
+                    event.x, event.y, event.nx, event.ny,
+                    event.force, event.marble.color
                 );
-                const impactSquash = Math.min(0.7, event.force * 0.0003);
-                event.marble.squashTarget = 1 - impactSquash;
-                const pan = this.audio.getSpatialPan(event.marble.x, this.renderer.camera.x, this.canvas.width / this.renderer.camera.zoom);
+                event.marble.squashTarget = 1 - Math.min(0.6, event.force * 0.0003);
+                const pan = this.audio.getSpatialPan(
+                    event.marble.x, this.renderer.camera.x,
+                    this.canvas.width / this.renderer.camera.zoom
+                );
                 this.audio.playBounce(event.force, pan);
-                if (event.force > 500) {
-                    this.renderer.camera.shake(event.force * 0.005);
+                if (event.force > 400) {
+                    this.renderer.camera.shake(Math.min(15, event.force * 0.003));
                 }
             }
         }
 
         const activeMarbles = this.engine.marbles.filter(m => m.alive && !m.finished);
         if (activeMarbles.length === 0 && this.raceState === 'racing') {
+            for (const m of this.engine.marbles) {
+                if (!m.finished) {
+                    m.finished = true;
+                    m.finishTime = this.raceTimer;
+                    m.rank = this.nextRank++;
+                    this.rankings.push(m);
+                }
+            }
             this.raceState = 'finished';
             this.replay.stopRecording();
-            this.updateRankingsUI();
+            this.updateRankingsDOM();
         }
 
-        const maxSpeed = Math.max(...this.engine.marbles.filter(m => m.alive).map(m => m.getSpeed()), 0);
+        const speeds = this.engine.marbles.filter(m => m.alive).map(m => m.getSpeed());
+        const maxSpeed = speeds.length > 0 ? Math.max(...speeds) : 0;
         this.audio.updateMusicIntensity(maxSpeed / 600);
-
         this.replay.captureFrame(this.engine.marbles, this.engine.time);
         this.renderer.camera.update(dt, this.engine.marbles);
     }
@@ -356,82 +402,90 @@ class MarbleRaceApp {
     }
 
     render(dt) {
+        const ctx = this.renderer.ctx;
+        ctx.save();
         this.renderer.render(this.engine, dt);
-        this.renderUI();
+        ctx.restore();
+        this.renderHUD();
     }
 
-    renderUI() {
-        const ctx = this.ctx;
-        const w = this.canvas.width / (Math.min(window.devicePixelRatio || 1, 2));
-        const h = this.canvas.height / (Math.min(window.devicePixelRatio || 1, 2));
-
+    renderHUD() {
+        const ctx = this.renderer.ctx;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        ctx.scale(dpr, dpr);
 
         if (this.raceState === 'countdown' && this.countdownTimer > 0) {
             const num = Math.ceil(this.countdownTimer);
-            const scale = 1 + (1 - (this.countdownTimer % 1)) * 0.3;
+            const frac = 1 - (this.countdownTimer % 1);
+            const scale = 1 + frac * 0.5;
+            const alpha = num > 0 ? 1 : frac;
             ctx.save();
             ctx.translate(w / 2, h / 2);
             ctx.scale(scale, scale);
-            ctx.font = 'bold 120px system-ui, sans-serif';
+            ctx.globalAlpha = alpha;
+            ctx.font = `bold ${Math.round(140 * this.dpr)}px system-ui, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#fff';
             ctx.shadowColor = '#6366f1';
-            ctx.shadowBlur = 30;
+            ctx.shadowBlur = 40 * this.dpr;
             ctx.fillText(num > 0 ? String(num) : 'GO!', 0, 0);
             ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
             ctx.restore();
         }
 
+        const fontSize = 15 * this.dpr;
         if (this.raceState === 'racing' || this.raceState === 'finished') {
-            ctx.font = 'bold 16px system-ui, sans-serif';
+            ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
             ctx.fillStyle = '#fff';
             ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
             const mins = Math.floor(this.raceTimer / 60);
             const secs = (this.raceTimer % 60).toFixed(1);
-            ctx.fillText(`⏱ ${mins}:${secs.padStart(4, '0')}`, 10, 30);
+            ctx.fillText(`${mins}:${secs.padStart(4, '0')}`, 12 * this.dpr, 48 * this.dpr);
         }
 
-        if (this.raceState === 'finished') {
+        if (this.raceState === 'finished' && this.rankings.length > 0) {
             ctx.save();
-            ctx.font = 'bold 48px system-ui, sans-serif';
+            ctx.font = `bold ${Math.round(42 * this.dpr)}px system-ui, sans-serif`;
             ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
             ctx.fillStyle = '#fff';
             ctx.shadowColor = '#ec4899';
-            ctx.shadowBlur = 20;
-            ctx.fillText('RACE COMPLETE!', w / 2, 80);
+            ctx.shadowBlur = 25 * this.dpr;
+            ctx.fillText('RACE COMPLETE!', w / 2, 60 * this.dpr);
             ctx.shadowBlur = 0;
-
-            if (this.rankings.length > 0) {
-                ctx.font = 'bold 24px system-ui, sans-serif';
-                ctx.fillStyle = '#ffd700';
-                ctx.fillText(`🏆 ${this.rankings[0].name} WINS!`, w / 2, 120);
-            }
+            ctx.font = `bold ${Math.round(24 * this.dpr)}px system-ui, sans-serif`;
+            ctx.fillStyle = '#ffd700';
+            ctx.fillText(`${this.rankings[0].name} WINS!`, w / 2, 110 * this.dpr);
             ctx.restore();
         }
 
         if (this.raceState === 'replay') {
-            ctx.font = 'bold 20px system-ui, sans-serif';
+            ctx.font = `bold ${Math.round(18 * this.dpr)}px system-ui, sans-serif`;
             ctx.fillStyle = '#ff4466';
             ctx.textAlign = 'center';
-            ctx.fillText(`⏪ REPLAY (${Math.round(this.replay.getProgress() * 100)}%)`, w / 2, 30);
+            ctx.textBaseline = 'top';
+            ctx.fillText(`REPLAY (${Math.round(this.replay.getProgress() * 100)}%)`, w / 2, 48 * this.dpr);
         }
 
-        if (this.showLeaderboard) {
+        if (this.showLeaderboard && this.raceState !== 'idle') {
             this.renderLeaderboard(ctx, w, h);
         }
 
         if (this.showFPS) {
-            ctx.font = '12px monospace';
+            const sz = 12 * this.dpr;
+            ctx.font = `${sz}px monospace`;
             ctx.fillStyle = this.perf.getFPS() < 30 ? '#ff4444' : '#44ff44';
             ctx.textAlign = 'right';
-            ctx.fillText(`${this.perf.getFPS()} FPS | ${this.perf.qualityLevel.toUpperCase()}`, w - 10, 20);
+            ctx.textBaseline = 'top';
+            ctx.fillText(
+                `${this.perf.getFPS()} FPS | ${this.perf.qualityLevel.toUpperCase()}`,
+                w - 12 * this.dpr, 48 * this.dpr
+            );
         }
-
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     renderLeaderboard(ctx, w, h) {
@@ -444,46 +498,61 @@ class MarbleRaceApp {
                 return b.y - a.y;
             });
 
-        const lbWidth = 180;
-        const lbX = w - lbWidth - 10;
-        const lbY = 40;
-        const rowH = 24;
+        const d = this.dpr;
+        const lbWidth = 170 * d;
+        const lbX = w - lbWidth - 12 * d;
+        const lbY = 50 * d;
+        const rowH = 22 * d;
         const maxShow = Math.min(marbles.length, 10);
+        const lbHeight = 28 * d + maxShow * rowH;
 
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
         ctx.beginPath();
-        ctx.roundRect(lbX, lbY, lbWidth, 30 + maxShow * rowH, 10);
+        if (ctx.roundRect) {
+            ctx.roundRect(lbX, lbY, lbWidth, lbHeight, 10 * d);
+        } else {
+            ctx.rect(lbX, lbY, lbWidth, lbHeight);
+        }
         ctx.fill();
 
-        ctx.font = 'bold 14px system-ui, sans-serif';
-        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${12 * d}px system-ui, sans-serif`;
+        ctx.fillStyle = '#aaa';
         ctx.textAlign = 'left';
-        ctx.fillText('LEADERBOARD', lbX + 10, lbY + 20);
+        ctx.textBaseline = 'top';
+        ctx.fillText('STANDINGS', lbX + 10 * d, lbY + 8 * d);
 
-        ctx.font = '13px system-ui, sans-serif';
+        ctx.font = `${11 * d}px system-ui, sans-serif`;
         for (let i = 0; i < maxShow; i++) {
             const m = marbles[i];
-            const y = lbY + 35 + i * rowH;
-            const rank = m.finished ? `#${m.rank}` : `${i + 1}.`;
+            const y = lbY + 26 * d + i * rowH;
+
             ctx.fillStyle = m.color;
             ctx.beginPath();
-            ctx.arc(lbX + 16, y - 3, 5, 0, Math.PI * 2);
+            ctx.arc(lbX + 14 * d, y + 4 * d, 4 * d, 0, Math.PI * 2);
             ctx.fill();
+
+            const rank = m.finished ? `#${m.rank}` : `${i + 1}.`;
             ctx.fillStyle = m.finished ? '#ffd700' : '#ccc';
-            ctx.fillText(`${rank} ${m.name}`, lbX + 26, y);
+            ctx.textAlign = 'left';
+            ctx.fillText(`${rank} ${m.name}`, lbX + 22 * d, y);
+
             if (m.finished) {
                 ctx.fillStyle = '#888';
                 ctx.textAlign = 'right';
-                ctx.fillText(`${m.finishTime.toFixed(1)}s`, lbX + lbWidth - 10, y);
-                ctx.textAlign = 'left';
+                ctx.fillText(`${m.finishTime.toFixed(1)}s`, lbX + lbWidth - 10 * d, y);
             }
         }
     }
 
-    updateRankingsUI() {
+    updateRankingsDOM() {
         const el = document.getElementById('rankingsList');
         if (!el) return;
         el.innerHTML = '';
+        if (this.rankings.length === 0) return;
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight:800;font-size:11px;color:#aaa;margin-bottom:6px;letter-spacing:1px;';
+        title.textContent = 'RESULTS';
+        el.appendChild(title);
         for (const m of this.rankings) {
             const div = document.createElement('div');
             div.className = 'ranking-item';
@@ -496,6 +565,15 @@ class MarbleRaceApp {
     }
 }
 
-const app = new MarbleRaceApp();
-document.addEventListener('DOMContentLoaded', () => app.init());
-if (document.readyState !== 'loading') app.init();
+let appInstance = null;
+function boot() {
+    if (appInstance) return;
+    appInstance = new MarbleRaceApp();
+    appInstance.init();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+} else {
+    boot();
+}
