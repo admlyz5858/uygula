@@ -40,3 +40,10 @@ This repo includes scripts for SDK + environment bootstrap:
 3. Build:
    - `./gradlew :app:assembleDebug`
    - `./gradlew :app:bundleRelease`
+
+## Download APK from GitHub Actions
+1. Push your branch to GitHub.
+2. Open the repository **Actions** tab.
+3. Run workflow: **Android Debug APK** (or use a recent push/PR run).
+4. Open the workflow run and download artifact:
+   - `focus-pomodoro-ai-pro-debug-apk`
