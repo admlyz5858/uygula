@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Marble Race</string>
+    <string name="title_activity_main">Marble Race</string>
+    <string name="package_name">com.marblerace.simulator</string>
+    <string name="custom_url_scheme">com.marblerace.simulator</string>
+</resources>
