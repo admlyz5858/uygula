@@ -12,6 +12,6 @@ interface AchievementDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(achievements: List<AchievementEntity>)
 
-    @Query("SELECT * FROM achievements ORDER BY unlocked DESC, id ASC")
+    @Query("SELECT * FROM achievements ORDER BY unlocked DESC, title ASC")
     fun observeAchievements(): Flow<List<AchievementEntity>>
 }
