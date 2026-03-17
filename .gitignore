@@ -1,3 +1,7 @@
 node_modules/
 dist/
-android-sdk/
+.DS_Store
+*.log
+android/app/build/
+android/.gradle/
+android/build/

@@ -1,546 +1,537 @@
-const SETTINGS_STORAGE_KEY = "focus-pomodoro-settings-v1";
-const MEDIA_STORAGE_KEY = "focus-pomodoro-media-v2";
-const THEME_STORAGE_KEY = "focus-pomodoro-theme-v1";
-const DEFAULT_VOLUME = 0.75;
+import { PhysicsEngine } from './src/physics/engine.js';
+import { Marble } from './src/physics/marble.js';
+import { Renderer } from './src/render/renderer.js';
+import { buildTrack, LEVELS } from './src/procedural/track.js';
+import { MarbleAI } from './src/ai/behavior.js';
+import { TouchController } from './src/mobile/touch.js';
+import { PerformanceMonitor, setupVisibilityHandler } from './src/mobile/performance.js';
+import { AudioEngine } from './src/audio/audio.js';
 
-const DEFAULT_SETTINGS = {
-  focusMinutes: 25,
-  shortBreakMinutes: 5,
-  longBreakMinutes: 15,
-  longBreakEvery: 4,
-};
-
-const VISUALS = [
-  {
-    src: "assets/images/countryside.webp",
-    title: "Countryside Path",
-    credit: "CC0 · Pixel.la Free Stock Photos / Wikimedia Commons",
-  },
-  {
-    src: "assets/images/river.webp",
-    title: "River in Fall",
-    credit: "Public Domain · U.S. Fish and Wildlife Service / Wikimedia Commons",
-  },
-  {
-    src: "assets/images/autumn.webp",
-    title: "Beautiful Autumn Day",
-    credit: "Public Domain · Photos Public Domain / Wikimedia Commons",
-  },
+const NAMES = [
+    'Crimson','Emerald','Sapphire','Amber','Violet','Cyan','Coral','Lime',
+    'Indigo','Rose','Teal','Gold','Scarlet','Azure','Orchid','Ruby',
+    'Jade','Cobalt','Tangerine','Magenta','Flame','Forest','Ocean','Sunset',
+    'Nebula','Arctic','Peach','Mint','Storm','Lava','Blaze','Frost',
 ];
+const AI_TYPES = ['aggressive','balanced','safe','random'];
+const SAVE_KEY = 'marble-race-progress';
 
-const TRACKS = [
-  {
-    id: "gymnopedie",
-    title: "Gymnopédie No.1 (Focus)",
-    src: "assets/music/gymnopedie-focus.ogg",
-    credit: "CC0 1.0 · Kevin MacLeod düzenlemesi / Wikimedia Commons",
-  },
-  {
-    id: "waves",
-    title: "Ocean Waves Ambience",
-    src: "assets/music/waves-focus.ogg",
-    credit: "Public Domain · Dsw4 / Wikimedia Commons",
-  },
-  {
-    id: "campfire",
-    title: "Campfire Ambience",
-    src: "assets/music/campfire-focus.ogg",
-    credit: "CC BY 3.0 · Glaneur de sons / Wikimedia Commons",
-  },
-];
-
-const state = {
-  mode: "focus",
-  remainingSeconds: DEFAULT_SETTINGS.focusMinutes * 60,
-  running: false,
-  completedFocusSessions: 0,
-  intervalId: null,
-  phaseDurationSeconds: DEFAULT_SETTINGS.focusMinutes * 60,
-  settings: { ...DEFAULT_SETTINGS },
-  visualIndex: 0,
-  selectedTrackId: TRACKS[0].id,
-  volume: DEFAULT_VOLUME,
-  isMuted: false,
-  themePreference: "system",
-};
-
-const modeLabel = document.getElementById("modeLabel");
-const sessionCount = document.getElementById("sessionCount");
-const timerDisplay = document.getElementById("timerDisplay");
-const progressBar = document.getElementById("progressBar");
-const bgImage = document.getElementById("bgImage");
-const galleryCaption = document.getElementById("galleryCaption");
-const themeColorMeta = document.getElementById("themeColorMeta");
-const themeStatus = document.getElementById("themeStatus");
-
-const startPauseBtn = document.getElementById("startPauseBtn");
-const resetBtn = document.getElementById("resetBtn");
-const skipBtn = document.getElementById("skipBtn");
-const saveSettingsBtn = document.getElementById("saveSettingsBtn");
-const prevVisualBtn = document.getElementById("prevVisualBtn");
-const nextVisualBtn = document.getElementById("nextVisualBtn");
-const themeAutoBtn = document.getElementById("themeAutoBtn");
-const themeLightBtn = document.getElementById("themeLightBtn");
-const themeDarkBtn = document.getElementById("themeDarkBtn");
-
-const musicSelect = document.getElementById("musicSelect");
-const volumeInput = document.getElementById("volumeInput");
-const musicToggleBtn = document.getElementById("musicToggleBtn");
-const musicMuteBtn = document.getElementById("musicMuteBtn");
-const trackMeta = document.getElementById("trackMeta");
-const ambientPlayer = document.getElementById("ambientPlayer");
-
-const focusInput = document.getElementById("focusInput");
-const shortBreakInput = document.getElementById("shortBreakInput");
-const longBreakInput = document.getElementById("longBreakInput");
-const cycleInput = document.getElementById("cycleInput");
-
-const systemThemeMedia = window.matchMedia("(prefers-color-scheme: dark)");
-
-function loadSettings() {
-  try {
-    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!saved) {
-      return;
+class MarbleRaceApp {
+    constructor() {
+        this.initialized = false;
+        this.canvas = null;
+        this.engine = null;
+        this.renderer = null;
+        this.audio = new AudioEngine();
+        this.perf = new PerformanceMonitor();
+        this.touch = null;
+        this.ais = [];
+        this.state = 'menu';
+        this.raceTimer = 0;
+        this.countdownTimer = 0;
+        this.finishY = 0;
+        this.trackBounds = null;
+        this.rankings = [];
+        this.nextRank = 1;
+        this.currentLevel = 1;
+        this.unlockedLevel = 1;
+        this.customMarbleCount = 0;
+        this.lastFrameTime = 0;
+        this.running = false;
+        this.paused = false;
+        this.dpr = 1;
+        this.showFPS = false;
+        this.levelSelectScroll = 0;
+        this.sliderDragging = false;
+        this.loadProgress();
     }
-    const parsed = JSON.parse(saved);
-    state.settings = {
-      focusMinutes: clamp(parsed.focusMinutes, 1, 90, DEFAULT_SETTINGS.focusMinutes),
-      shortBreakMinutes: clamp(parsed.shortBreakMinutes, 1, 30, DEFAULT_SETTINGS.shortBreakMinutes),
-      longBreakMinutes: clamp(parsed.longBreakMinutes, 5, 60, DEFAULT_SETTINGS.longBreakMinutes),
-      longBreakEvery: clamp(parsed.longBreakEvery, 2, 8, DEFAULT_SETTINGS.longBreakEvery),
-    };
-  } catch (_) {
-    state.settings = { ...DEFAULT_SETTINGS };
-  }
-}
 
-function loadMediaPreferences() {
-  try {
-    const saved = localStorage.getItem(MEDIA_STORAGE_KEY);
-    if (!saved) {
-      return;
+    loadProgress() {
+        try {
+            const d = JSON.parse(localStorage.getItem(SAVE_KEY));
+            if (d && d.unlocked) this.unlockedLevel = Math.min(d.unlocked, 50);
+            if (d && d.customMarbles) this.customMarbleCount = d.customMarbles;
+        } catch (e) {}
     }
-    const parsed = JSON.parse(saved);
-    state.visualIndex = clamp(Number(parsed.visualIndex), 0, VISUALS.length - 1, 0);
-    state.selectedTrackId = TRACKS.some((track) => track.id === parsed.selectedTrackId)
-      ? parsed.selectedTrackId
-      : TRACKS[0].id;
-    state.volume = clamp(Number(parsed.volume * 100), 0, 100, DEFAULT_VOLUME * 100) / 100;
-    state.isMuted = Boolean(parsed.isMuted);
-  } catch (_) {
-    // Varsayılan ayarlar ile devam et.
-  }
-}
 
-function loadThemePreference() {
-  try {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    if (saved === "light" || saved === "dark" || saved === "system") {
-      state.themePreference = saved;
+    saveProgress() {
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify({ unlocked: this.unlockedLevel, customMarbles: this.customMarbleCount })); } catch (e) {}
     }
-  } catch (_) {
-    state.themePreference = "system";
-  }
-}
 
-function saveMediaPreferences() {
-  localStorage.setItem(
-    MEDIA_STORAGE_KEY,
-    JSON.stringify({
-      visualIndex: state.visualIndex,
-      selectedTrackId: state.selectedTrackId,
-      volume: state.volume,
-      isMuted: state.isMuted,
-    }),
-  );
-}
+    init() {
+        if (this.initialized) return;
+        this.initialized = true;
+        this.canvas = document.getElementById('gameCanvas');
+        if (!this.canvas) return;
 
-function saveSettings() {
-  const nextSettings = {
-    focusMinutes: clamp(Number(focusInput.value), 1, 90, state.settings.focusMinutes),
-    shortBreakMinutes: clamp(Number(shortBreakInput.value), 1, 30, state.settings.shortBreakMinutes),
-    longBreakMinutes: clamp(Number(longBreakInput.value), 5, 60, state.settings.longBreakMinutes),
-    longBreakEvery: clamp(Number(cycleInput.value), 2, 8, state.settings.longBreakEvery),
-  };
+        this.engine = new PhysicsEngine();
+        this.renderer = new Renderer(this.canvas);
+        this.setupCanvas();
 
-  state.settings = nextSettings;
-  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
-  initializeCurrentMode();
-  updateUI();
-}
+        this.touch = new TouchController(this.canvas, this.renderer.camera);
+        this.touch.onTap = (canvasX, canvasY) => this.handleTap(canvasX, canvasY);
 
-function fillInputs() {
-  focusInput.value = String(state.settings.focusMinutes);
-  shortBreakInput.value = String(state.settings.shortBreakMinutes);
-  longBreakInput.value = String(state.settings.longBreakMinutes);
-  cycleInput.value = String(state.settings.longBreakEvery);
-  volumeInput.value = String(Math.round(state.volume * 100));
-}
+        setupVisibilityHandler(
+            () => { this.paused = false; },
+            () => { this.paused = true; }
+        );
+        window.addEventListener('resize', () => {
+            this.setupCanvas();
+            if (this.trackBounds) this.renderer.camera.setTrackBounds(this.trackBounds);
+        });
 
-function clamp(value, min, max, fallback) {
-  if (Number.isNaN(value) || !Number.isFinite(value)) {
-    return fallback;
-  }
-  return Math.min(max, Math.max(min, Math.round(value)));
-}
-
-function getResolvedTheme() {
-  if (state.themePreference === "dark" || state.themePreference === "light") {
-    return state.themePreference;
-  }
-  return systemThemeMedia.matches ? "dark" : "light";
-}
-
-function applyTheme() {
-  const resolvedTheme = getResolvedTheme();
-  document.body.classList.remove("theme-light", "theme-dark");
-  document.body.classList.add(`theme-${resolvedTheme}`);
-  updateThemeButtons();
-
-  if (themeColorMeta) {
-    themeColorMeta.setAttribute("content", resolvedTheme === "dark" ? "#0f172a" : "#f8fafc");
-  }
-}
-
-function setThemePreference(theme) {
-  if (theme !== "system" && theme !== "light" && theme !== "dark") {
-    return;
-  }
-  state.themePreference = theme;
-  localStorage.setItem(THEME_STORAGE_KEY, theme);
-  applyTheme();
-}
-
-function updateThemeButtons() {
-  themeAutoBtn.classList.toggle("is-active", state.themePreference === "system");
-  themeLightBtn.classList.toggle("is-active", state.themePreference === "light");
-  themeDarkBtn.classList.toggle("is-active", state.themePreference === "dark");
-  const resolvedTheme = getResolvedTheme();
-  const prefText =
-    state.themePreference === "system"
-      ? `Otomatik (${resolvedTheme === "dark" ? "Koyu" : "Açık"})`
-      : state.themePreference === "dark"
-        ? "Koyu"
-        : "Açık";
-  if (themeStatus) {
-    themeStatus.textContent = `Tema: ${prefText}`;
-  }
-}
-
-function initializeCurrentMode() {
-  const duration = getModeDurationSeconds(state.mode);
-  state.phaseDurationSeconds = duration;
-  state.remainingSeconds = duration;
-  stopTimer();
-}
-
-function getModeDurationSeconds(mode) {
-  if (mode === "focus") {
-    return state.settings.focusMinutes * 60;
-  }
-  if (mode === "shortBreak") {
-    return state.settings.shortBreakMinutes * 60;
-  }
-  return state.settings.longBreakMinutes * 60;
-}
-
-function toggleStartPause() {
-  if (state.running) {
-    stopTimer();
-  } else {
-    startTimer();
-  }
-}
-
-function startTimer() {
-  if (state.running) {
-    return;
-  }
-  state.running = true;
-  startPauseBtn.textContent = "Duraklat";
-
-  let lastTick = performance.now();
-
-  state.intervalId = window.setInterval(() => {
-    const now = performance.now();
-    const elapsed = Math.floor((now - lastTick) / 1000);
-    if (elapsed < 1) {
-      return;
+        this.state = 'menu';
+        this.running = true;
+        this.lastFrameTime = performance.now();
+        requestAnimationFrame(t => this.gameLoop(t));
     }
-    lastTick += elapsed * 1000;
-    state.remainingSeconds = Math.max(0, state.remainingSeconds - elapsed);
 
-    if (state.remainingSeconds === 0) {
-      onPhaseFinished();
+    setupCanvas() {
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = window.innerWidth, h = window.innerHeight;
+        this.canvas.width = Math.floor(w * this.dpr);
+        this.canvas.height = Math.floor(h * this.dpr);
+        this.canvas.style.width = w + 'px';
+        this.canvas.style.height = h + 'px';
+        if (this.renderer) this.renderer.resize(this.canvas.width, this.canvas.height);
     }
-    updateUI();
-  }, 250);
-  updateUI();
+
+    getMarbleCount(levelCfg) {
+        return this.customMarbleCount > 0 ? this.customMarbleCount : levelCfg.marbles;
+    }
+
+    getMarbleRadius(count) {
+        if (count <= 20) return 9;
+        if (count <= 50) return 7;
+        if (count <= 100) return 5;
+        if (count <= 300) return 3.5;
+        if (count <= 600) return 2.5;
+        return 2;
+    }
+
+    loadLevel(levelNum) {
+        this.currentLevel = levelNum;
+        const cfg = { ...LEVELS[levelNum - 1] };
+        const mc = this.getMarbleCount(cfg);
+        cfg.marbles = mc;
+
+        if (mc > 50) {
+            cfg.trackWidth = Math.max(cfg.trackWidth, 500);
+        }
+
+        this.engine = new PhysicsEngine();
+        this.ais = [];
+        this.rankings = [];
+        this.nextRank = 1;
+        this.raceTimer = 0;
+
+        const trackData = buildTrack(this.engine, this.renderer, cfg);
+        this.finishY = trackData.finishY;
+        this.trackBounds = trackData.bounds;
+
+        const radius = this.getMarbleRadius(mc);
+        const useAI = mc <= 50;
+
+        for (let i = 0; i < mc; i++) {
+            const pos = trackData.startPositions[i] || { x: (Math.random() - 0.5) * (cfg.trackWidth - 30), y: 25 + (i * 5) % 60 };
+            const color = this.renderer.getMarbleColor(i);
+            const marble = new Marble(pos.x, pos.y, radius, {
+                color, glowColor: color,
+                name: NAMES[i % NAMES.length],
+                aiType: AI_TYPES[i % AI_TYPES.length],
+            });
+            this.engine.addMarble(marble);
+            if (useAI) this.ais.push(new MarbleAI(marble, marble.aiType));
+        }
+
+        this.engine.paused = true;
+        this.renderer.camera.setMode('static');
+        this.renderer.camera.setTrackBounds(this.trackBounds);
+        this.state = 'ready';
+    }
+
+    startCountdown() {
+        this.state = 'countdown';
+        this.countdownTimer = 2;
+        this.engine.paused = true;
+    }
+
+    handleTap(canvasX, canvasY) {
+        const w = this.canvas.width, h = this.canvas.height, d = this.dpr;
+
+        if (this.state === 'menu') {
+            this.handleMenuTap(canvasX, canvasY);
+            return;
+        }
+        if (this.state === 'ready') {
+            this.audio.init();
+            this.startCountdown();
+            return;
+        }
+        if (this.state === 'racing') {
+            const world = this.renderer.camera.screenToWorld(canvasX, canvasY);
+            const closest = this.findClosestMarble(world.x, world.y, 60);
+            if (closest) {
+                this.renderer.camera.focusOn(closest);
+                setTimeout(() => {
+                    this.renderer.camera.setMode('static');
+                    if (this.trackBounds) this.renderer.camera.setTrackBounds(this.trackBounds);
+                }, 3000);
+            }
+            return;
+        }
+        if (this.state === 'finished') {
+            const cx = w / 2;
+            const btnW = 160 * d, btnH = 42 * d;
+            const baseY = h * 0.55;
+            const btns = [baseY, baseY + btnH + 14 * d, baseY + (btnH + 14 * d) * 2];
+            for (let i = 0; i < btns.length; i++) {
+                const by = btns[i];
+                if (canvasX > cx - btnW && canvasX < cx + btnW && canvasY > by - btnH / 2 && canvasY < by + btnH / 2) {
+                    if (i === 0) { if (this.currentLevel < 50) this.loadLevel(this.currentLevel + 1); else this.state = 'menu'; }
+                    if (i === 1) this.loadLevel(this.currentLevel);
+                    if (i === 2) this.state = 'menu';
+                    return;
+                }
+            }
+        }
+    }
+
+    handleMenuTap(sx, sy) {
+        const d = this.dpr, w = this.canvas.width, h = this.canvas.height;
+
+        const sliderY = 68 * d;
+        const sliderX = w * 0.15;
+        const sliderW = w * 0.7;
+        if (sy >= sliderY - 20 * d && sy <= sliderY + 20 * d && sx >= sliderX && sx <= sliderX + sliderW) {
+            const t = Math.max(0, Math.min(1, (sx - sliderX) / sliderW));
+            this.customMarbleCount = Math.round(t * 999) + 1;
+            this.saveProgress();
+            return;
+        }
+
+        const resetBtnX = sliderX + sliderW + 10 * d;
+        if (sy >= sliderY - 15 * d && sy <= sliderY + 15 * d && sx >= resetBtnX && sx <= resetBtnX + 40 * d) {
+            this.customMarbleCount = 0;
+            this.saveProgress();
+            return;
+        }
+
+        const cols = Math.min(5, Math.floor(w / (70 * d)));
+        const cellW = 60 * d, cellH = 55 * d, gap = 8 * d;
+        const startY = 100 * d;
+        const totalW = cols * (cellW + gap) - gap;
+        const startX = (w - totalW) / 2;
+
+        for (let i = 0; i < 50; i++) {
+            const col = i % cols, row = Math.floor(i / cols);
+            const x = startX + col * (cellW + gap);
+            const y = startY + row * (cellH + gap) - this.levelSelectScroll;
+            if (sx >= x && sx <= x + cellW && sy >= y && sy <= y + cellH) {
+                if (i + 1 <= this.unlockedLevel) {
+                    this.audio.init();
+                    this.loadLevel(i + 1);
+                }
+                return;
+            }
+        }
+    }
+
+    gameLoop(timestamp) {
+        if (!this.running) return;
+        this.perf.startFrame();
+        const dt = Math.min((timestamp - this.lastFrameTime) / 1000, 0.05);
+        this.lastFrameTime = timestamp;
+        if (!this.paused) { this.update(dt); this.render(); }
+        requestAnimationFrame(t => this.gameLoop(t));
+    }
+
+    update(dt) {
+        if (this.state === 'menu') return;
+
+        if (this.state === 'countdown') {
+            this.countdownTimer -= dt;
+            if (this.countdownTimer <= 0) { this.state = 'racing'; this.engine.paused = false; }
+            this.renderer.camera.update(dt, this.engine.marbles);
+            return;
+        }
+        if (this.state !== 'racing') {
+            this.renderer.camera.update(dt, this.engine.marbles);
+            return;
+        }
+
+        this.raceTimer += dt;
+        this.engine.update(dt);
+        for (const ai of this.ais) ai.update(dt, this.engine.time, this.engine);
+
+        for (const m of this.engine.marbles) {
+            if (!m.alive) continue;
+            if (this.engine.marbles.length <= 100) m.updateTrail();
+
+            if (this.trackBounds) {
+                const b = this.trackBounds, r = m.radius;
+                if (m.x - r < b.minX) { m.x = b.minX + r; m.vx = Math.abs(m.vx) * 0.4; }
+                if (m.x + r > b.maxX) { m.x = b.maxX - r; m.vx = -Math.abs(m.vx) * 0.4; }
+                if (m.y - r < b.minY) { m.y = b.minY + r; m.vy = Math.abs(m.vy) * 0.3; }
+                if (m.y + r > b.maxY) { m.y = b.maxY - r; m.vy = -Math.abs(m.vy) * 0.3; }
+            }
+
+            if (!m.finished && m.y >= this.finishY) {
+                m.finished = true;
+                m.finishTime = this.raceTimer;
+                m.rank = this.nextRank++;
+                this.rankings.push(m);
+                if (m.rank === 1) this.audio.playFinish(1);
+            }
+        }
+
+        const active = this.engine.marbles.filter(m => m.alive && !m.finished);
+        if (active.length === 0) {
+            for (const m of this.engine.marbles) {
+                if (!m.finished) { m.finished = true; m.finishTime = this.raceTimer; m.rank = this.nextRank++; this.rankings.push(m); }
+            }
+            this.state = 'finished';
+            if (this.currentLevel >= this.unlockedLevel && this.currentLevel < 50) {
+                this.unlockedLevel = this.currentLevel + 1;
+                this.saveProgress();
+            }
+        }
+
+        this.renderer.camera.update(dt, this.engine.marbles);
+    }
+
+    render() {
+        const ctx = this.renderer.ctx;
+        const w = this.canvas.width, h = this.canvas.height, d = this.dpr;
+
+        if (this.state === 'menu') { this.renderMenu(ctx, w, h, d); return; }
+
+        ctx.save();
+        this.renderer.render(this.engine, 0);
+        ctx.restore();
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        const mc = this.engine.marbles.length;
+        ctx.font = `bold ${11 * d}px system-ui`;
+        ctx.fillStyle = '#aaa';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`Lv.${this.currentLevel} - ${LEVELS[this.currentLevel - 1].name} (${mc} tops)`, 8 * d, 6 * d);
+
+        if (this.state === 'ready') {
+            ctx.font = `bold ${26 * d}px system-ui`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#fff';
+            ctx.fillText('TAP TO START', w / 2, h / 2 - 15 * d);
+            ctx.font = `${13 * d}px system-ui`;
+            ctx.fillStyle = '#aaa';
+            ctx.fillText(`${mc} marbles`, w / 2, h / 2 + 15 * d);
+        }
+
+        if (this.state === 'countdown') {
+            const num = Math.ceil(this.countdownTimer);
+            ctx.font = `bold ${90 * d}px system-ui`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(num > 0 ? String(num) : 'GO!', w / 2, h / 2);
+        }
+
+        if (this.state === 'racing') {
+            ctx.font = `bold ${13 * d}px system-ui`;
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`${this.raceTimer.toFixed(1)}s`, 8 * d, 20 * d);
+            ctx.fillText(`${this.rankings.length}/${mc} finished`, 8 * d, 36 * d);
+            if (mc <= 100) this.renderStandings(ctx, w, h, d);
+        }
+
+        if (this.state === 'finished') this.renderResults(ctx, w, h, d);
+
+        if (this.showFPS) {
+            ctx.font = `${10 * d}px monospace`;
+            ctx.fillStyle = '#4f4';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${this.perf.getFPS()} FPS`, w - 6 * d, 6 * d);
+        }
+    }
+
+    renderMenu(ctx, w, h, d) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = '#0c0c20';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.font = `bold ${26 * d}px system-ui`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff';
+        ctx.fillText('MARBLE RACE', w / 2, 30 * d);
+
+        const sliderY = 68 * d;
+        const sliderX = w * 0.12;
+        const sliderW = w * 0.65;
+        const mc = this.customMarbleCount;
+        const label = mc > 0 ? `${mc} tops` : 'Default';
+
+        ctx.font = `${11 * d}px system-ui`;
+        ctx.fillStyle = '#999';
+        ctx.textAlign = 'left';
+        ctx.fillText('Top sayısı:', sliderX, sliderY - 14 * d);
+
+        ctx.fillStyle = '#222';
+        ctx.fillRect(sliderX, sliderY - 3 * d, sliderW, 6 * d);
+        if (mc > 0) {
+            const t = (mc - 1) / 999;
+            ctx.fillStyle = '#4466cc';
+            ctx.beginPath();
+            ctx.arc(sliderX + t * sliderW, sliderY, 8 * d, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.font = `bold ${13 * d}px system-ui`;
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        ctx.fillText(label, sliderX + sliderW + 12 * d, sliderY - 5 * d);
+
+        if (mc > 0) {
+            const resetX = sliderX + sliderW + 12 * d;
+            const resetY = sliderY + 8 * d;
+            ctx.font = `${9 * d}px system-ui`;
+            ctx.fillStyle = '#666';
+            ctx.fillText('(tap to reset)', resetX, resetY);
+        }
+
+        const cols = Math.min(5, Math.floor(w / (68 * d)));
+        const cellW = 58 * d, cellH = 52 * d, gap = 7 * d;
+        const startY = 95 * d;
+        const totalW = cols * (cellW + gap) - gap;
+        const startX = (w - totalW) / 2;
+
+        for (let i = 0; i < 50; i++) {
+            const lvl = i + 1;
+            const col = i % cols, row = Math.floor(i / cols);
+            const x = startX + col * (cellW + gap);
+            const y = startY + row * (cellH + gap) - this.levelSelectScroll;
+            if (y + cellH < 0 || y > h) continue;
+
+            const unlocked = lvl <= this.unlockedLevel;
+            const completed = lvl < this.unlockedLevel;
+
+            ctx.fillStyle = completed ? '#132213' : unlocked ? '#151530' : '#0e0e14';
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(x, y, cellW, cellH, 7 * d);
+            else ctx.rect(x, y, cellW, cellH);
+            ctx.fill();
+            ctx.strokeStyle = completed ? '#2a6a2a' : unlocked ? '#333366' : '#1a1a22';
+            ctx.lineWidth = d;
+            ctx.stroke();
+
+            ctx.font = `bold ${16 * d}px system-ui`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = unlocked ? '#fff' : '#444';
+            ctx.fillText(unlocked ? String(lvl) : '🔒', x + cellW / 2, y + cellH / 2 - 3 * d);
+
+            if (completed) {
+                ctx.font = `${9 * d}px system-ui`;
+                ctx.fillStyle = '#4a4';
+                ctx.fillText('✓', x + cellW / 2, y + cellH / 2 + 13 * d);
+            } else if (unlocked) {
+                const dispMc = mc > 0 ? mc : LEVELS[i].marbles;
+                ctx.font = `${8 * d}px system-ui`;
+                ctx.fillStyle = '#777';
+                ctx.fillText(`${dispMc}`, x + cellW / 2, y + cellH / 2 + 13 * d);
+            }
+        }
+    }
+
+    renderStandings(ctx, w, h, d) {
+        const marbles = [...this.engine.marbles].filter(m => m.alive || m.finished).sort((a, b) => {
+            if (a.finished && b.finished) return a.rank - b.rank;
+            if (a.finished) return -1;
+            if (b.finished) return 1;
+            return b.y - a.y;
+        });
+
+        const lbW = 130 * d, lbX = w - lbW - 5 * d, lbY = 5 * d;
+        const rowH = 16 * d;
+        const maxShow = Math.min(marbles.length, 8);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(lbX, lbY, lbW, 4 * d + maxShow * rowH, 5 * d);
+        else ctx.rect(lbX, lbY, lbW, 4 * d + maxShow * rowH);
+        ctx.fill();
+
+        ctx.font = `${8.5 * d}px system-ui`;
+        ctx.textBaseline = 'top';
+        for (let i = 0; i < maxShow; i++) {
+            const m = marbles[i];
+            const y = lbY + 3 * d + i * rowH;
+            ctx.fillStyle = m.color;
+            ctx.beginPath();
+            ctx.arc(lbX + 8 * d, y + 5 * d, 2.5 * d, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = m.finished ? '#ffd700' : '#ccc';
+            ctx.textAlign = 'left';
+            ctx.fillText(`${m.finished ? '#' + m.rank : i + 1 + '.'} ${m.name}`, lbX + 14 * d, y + 1 * d);
+            if (m.finished) {
+                ctx.fillStyle = '#888';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${m.finishTime.toFixed(1)}s`, lbX + lbW - 5 * d, y + 1 * d);
+            }
+        }
+    }
+
+    renderResults(ctx, w, h, d) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, 0, w, h);
+
+        const mc = this.engine.marbles.length;
+        ctx.font = `bold ${26 * d}px system-ui`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`Level ${this.currentLevel} Complete!`, w / 2, h * 0.15);
+
+        ctx.font = `${12 * d}px system-ui`;
+        ctx.fillStyle = '#aaa';
+        ctx.fillText(`${mc} marbles | ${this.raceTimer.toFixed(1)}s`, w / 2, h * 0.21);
+
+        if (this.rankings.length > 0) {
+            ctx.font = `bold ${18 * d}px system-ui`;
+            ctx.fillStyle = '#ffd700';
+            ctx.fillText(`🏆 ${this.rankings[0].name} wins!`, w / 2, h * 0.27);
+        }
+
+        ctx.font = `${11 * d}px system-ui`;
+        const maxShow = Math.min(this.rankings.length, mc > 100 ? 3 : 6);
+        for (let i = 0; i < maxShow; i++) {
+            const m = this.rankings[i];
+            ctx.fillStyle = i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : '#888';
+            ctx.fillText(`#${m.rank} ${m.name}  ${m.finishTime.toFixed(2)}s`, w / 2, h * 0.33 + i * 18 * d);
+        }
+
+        const btnW = 150 * d, btnH = 38 * d;
+        const btns = [
+            { y: h * 0.55, color: '#4444cc', text: this.currentLevel < 50 ? '▶ NEXT LEVEL' : '🏆 ALL DONE!' },
+            { y: h * 0.55 + btnH + 12 * d, color: '#333', text: '↻ RETRY' },
+            { y: h * 0.55 + (btnH + 12 * d) * 2, color: '#222', text: '← LEVELS' },
+        ];
+        for (const b of btns) {
+            ctx.fillStyle = b.color;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(w / 2 - btnW / 2, b.y - btnH / 2, btnW, btnH, 7 * d);
+            else ctx.rect(w / 2 - btnW / 2, b.y - btnH / 2, btnW, btnH);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${13 * d}px system-ui`;
+            ctx.fillText(b.text, w / 2, b.y + 1 * d);
+        }
+    }
 }
 
-function stopTimer() {
-  state.running = false;
-  startPauseBtn.textContent = "Başlat";
-  if (state.intervalId !== null) {
-    clearInterval(state.intervalId);
-    state.intervalId = null;
-  }
-  updateUI();
-}
-
-function resetCurrentPhase() {
-  initializeCurrentMode();
-  updateUI();
-}
-
-function skipPhase() {
-  onPhaseFinished(true);
-  updateUI();
-}
-
-function onPhaseFinished(skipNotification = false) {
-  const wasMusicPlaying = !ambientPlayer.paused;
-  stopTimer();
-
-  if (state.mode === "focus") {
-    state.completedFocusSessions += 1;
-    const useLongBreak = state.completedFocusSessions % state.settings.longBreakEvery === 0;
-    state.mode = useLongBreak ? "longBreak" : "shortBreak";
-  } else {
-    state.mode = "focus";
-  }
-
-  syncVisualWithMode();
-  syncTrackWithMode(wasMusicPlaying);
-  state.phaseDurationSeconds = getModeDurationSeconds(state.mode);
-  state.remainingSeconds = state.phaseDurationSeconds;
-
-  if (!skipNotification) {
-    notifyPhaseSwitch();
-    vibratePhone();
-    beep();
-  }
-}
-
-function syncVisualWithMode() {
-  if (state.mode === "focus") {
-    setVisual(0);
-  } else if (state.mode === "shortBreak") {
-    setVisual(1);
-  } else {
-    setVisual(2);
-  }
-}
-
-function syncTrackWithMode(keepPlaying) {
-  if (state.mode === "focus") {
-    selectTrack("gymnopedie", keepPlaying);
-  } else if (state.mode === "shortBreak") {
-    selectTrack("waves", keepPlaying);
-  } else {
-    selectTrack("campfire", keepPlaying);
-  }
-}
-
-function updateUI() {
-  timerDisplay.textContent = formatSeconds(state.remainingSeconds);
-  sessionCount.textContent = `Tamamlanan odak: ${state.completedFocusSessions}`;
-  document.body.classList.toggle("is-running", state.running);
-
-  if (state.mode === "focus") {
-    modeLabel.textContent = "Odak";
-    modeLabel.classList.remove("mode-badge--break");
-    modeLabel.classList.add("mode-badge--focus");
-    document.title = `${timerDisplay.textContent} · Odak`;
-  } else if (state.mode === "shortBreak") {
-    modeLabel.textContent = "Kısa mola";
-    modeLabel.classList.remove("mode-badge--focus");
-    modeLabel.classList.add("mode-badge--break");
-    document.title = `${timerDisplay.textContent} · Kısa mola`;
-  } else {
-    modeLabel.textContent = "Uzun mola";
-    modeLabel.classList.remove("mode-badge--focus");
-    modeLabel.classList.add("mode-badge--break");
-    document.title = `${timerDisplay.textContent} · Uzun mola`;
-  }
-
-  const completed = state.phaseDurationSeconds - state.remainingSeconds;
-  const progress = (completed / state.phaseDurationSeconds) * 100;
-  progressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
-}
-
-function setVisual(index) {
-  const normalized = (index + VISUALS.length) % VISUALS.length;
-  state.visualIndex = normalized;
-  const visual = VISUALS[normalized];
-  document.body.style.setProperty("--bg-image-url", `url("${visual.src}")`);
-
-  // Bazı WebView sürümlerinde ani src değişiminde görsel boş kalabildiği için preload sonrası atanır.
-  const image = new Image();
-  image.onload = () => {
-    bgImage.src = visual.src;
-  };
-  image.src = visual.src;
-
-  galleryCaption.textContent = `Arka plan görseli: ${visual.title} · ${visual.credit}`;
-  saveMediaPreferences();
-}
-
-function goToNextVisual() {
-  setVisual(state.visualIndex + 1);
-}
-
-function goToPrevVisual() {
-  setVisual(state.visualIndex - 1);
-}
-
-function populateTrackSelect() {
-  TRACKS.forEach((track) => {
-    const option = document.createElement("option");
-    option.value = track.id;
-    option.textContent = track.title;
-    musicSelect.append(option);
-  });
-}
-
-function selectTrack(trackId, autoplayIfPlaying = false) {
-  const track = TRACKS.find((item) => item.id === trackId);
-  if (!track) {
-    return;
-  }
-  const keepPlaying = autoplayIfPlaying && !ambientPlayer.paused;
-  state.selectedTrackId = track.id;
-  musicSelect.value = track.id;
-  ambientPlayer.src = track.src;
-  ambientPlayer.volume = state.volume;
-  ambientPlayer.muted = state.isMuted;
-  trackMeta.textContent = `${track.title} · ${track.credit}`;
-  saveMediaPreferences();
-
-  if (keepPlaying) {
-    ambientPlayer.play().catch(() => {});
-  }
-}
-
-function toggleMusic() {
-  if (ambientPlayer.paused) {
-    ambientPlayer.play().then(updateMusicButtons).catch(() => {});
-  } else {
-    ambientPlayer.pause();
-    updateMusicButtons();
-  }
-}
-
-function toggleMute() {
-  state.isMuted = !state.isMuted;
-  ambientPlayer.muted = state.isMuted;
-  saveMediaPreferences();
-  updateMusicButtons();
-}
-
-function updateVolume() {
-  state.volume = clamp(Number(volumeInput.value), 0, 100, DEFAULT_VOLUME * 100) / 100;
-  ambientPlayer.volume = state.volume;
-  saveMediaPreferences();
-}
-
-function updateMusicButtons() {
-  musicToggleBtn.textContent = ambientPlayer.paused ? "Müziği başlat" : "Müziği durdur";
-  musicMuteBtn.textContent = state.isMuted ? "Sesi aç" : "Sessize al";
-}
-
-function formatSeconds(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function notifyPhaseSwitch() {
-  if (!("Notification" in window)) {
-    return;
-  }
-
-  if (Notification.permission === "default") {
-    Notification.requestPermission().catch(() => {});
-    return;
-  }
-
-  if (Notification.permission === "granted") {
-    const body = state.mode === "focus" ? "Odak seansı başladı." : "Mola zamanı başladı.";
-    new Notification("Pomodoro", { body });
-  }
-}
-
-function vibratePhone() {
-  if ("vibrate" in navigator) {
-    navigator.vibrate([200, 100, 250]);
-  }
-}
-
-function beep() {
-  try {
-    const ctx = new AudioContext();
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    oscillator.type = "triangle";
-    oscillator.frequency.value = 880;
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
-
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + 0.35);
-  } catch (_) {
-    // Sessizce geç: bazı tarayıcılarda ses kilidi olabilir.
-  }
-}
-
-startPauseBtn.addEventListener("click", toggleStartPause);
-resetBtn.addEventListener("click", resetCurrentPhase);
-skipBtn.addEventListener("click", skipPhase);
-saveSettingsBtn.addEventListener("click", saveSettings);
-prevVisualBtn.addEventListener("click", goToPrevVisual);
-nextVisualBtn.addEventListener("click", goToNextVisual);
-musicToggleBtn.addEventListener("click", toggleMusic);
-musicMuteBtn.addEventListener("click", toggleMute);
-volumeInput.addEventListener("input", updateVolume);
-themeAutoBtn.addEventListener("click", () => setThemePreference("system"));
-themeLightBtn.addEventListener("click", () => setThemePreference("light"));
-themeDarkBtn.addEventListener("click", () => setThemePreference("dark"));
-musicSelect.addEventListener("change", (event) => selectTrack(event.target.value, true));
-ambientPlayer.addEventListener("play", updateMusicButtons);
-ambientPlayer.addEventListener("pause", updateMusicButtons);
-systemThemeMedia.addEventListener("change", () => {
-  if (state.themePreference === "system") {
-    applyTheme();
-  }
-});
-
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) {
-    updateUI();
-  }
-});
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  });
-}
-
-loadSettings();
-loadMediaPreferences();
-loadThemePreference();
-populateTrackSelect();
-fillInputs();
-applyTheme();
-initializeCurrentMode();
-setVisual(state.visualIndex);
-selectTrack(state.selectedTrackId);
-updateMusicButtons();
-updateUI();
+let app = null;
+function boot() { if (app) return; app = new MarbleRaceApp(); app.init(); }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+else boot();

@@ -1,83 +1,111 @@
-# Mobil Focus Pomodoro
+# Marble Race Simulator
 
-Mobil cihazlara uygun, kurulum yapılabilen (PWA) basit bir Pomodoro uygulaması.
+Ultra-realistic marble race physics simulator with procedural tracks, AI marbles, and cinematic visuals. Runs in any modern browser, optimized for mobile.
 
-## Özellikler
-
-- Odak / kısa mola / uzun mola döngüsü
-- Uzun mola için tekrar aralığı ayarı (örn. her 4 odakta bir)
-- Başlat, duraklat, sıfırla ve faz geç butonları
-- Yerel depolamada ayarların saklanması
-- Seans bitiminde ses + titreşim + bildirim denemesi
-- Service Worker ile temel offline kullanım
-- Gelişmiş animasyonlar (cinematic arka plan, yüzen glow efektleri, dinamik progress)
-- Arka plana gömülü stok görsel geçişi ve şeffaf (glassmorphism) uygulama katmanı
-- Karanlık / aydınlık / otomatik tema modu
-- Telifsiz stok arka plan görselleri
-- Telifsiz stok odak müzik/ambiyans oynatıcı (parça seçimi + ses kontrolü)
-
-## Çalıştırma
-
-Bu proje statik dosyalardan oluşur. Yerel sunucu ile çalıştır:
+## Quick Start
 
 ```bash
-python3 -m http.server 8080
+npx serve .
 ```
 
-Sonra tarayıcıdan:
+Then open `http://localhost:3000` in your browser.
 
-`http://localhost:8080`
+## Features
 
-## Mobil kullanım
+### Physics Engine
+- Semi-implicit Euler integrator with constraint solving (10 iterations)
+- SAT-based collision detection with Baumgarte stabilization
+- Rolling friction with torque-based model
+- Static + dynamic friction, angular velocity, moment of inertia (2/5 mr²)
+- Material system: ice, rubber, metal, sand, wood, glass, bouncy, sticky, conveyor
+- Air drag (F = -kv²), Magnus/spin effect
 
-- Tarayıcı menüsünden **Ana Ekrana Ekle** seçeneğiyle uygulama gibi kurabilirsin.
-- Odak seansı sırasında ekranı kilitlemeden uygulamayı açık tutman önerilir.
+### Force Zones
+- Gravity zones, magnetic fields, vortex spirals
+- Wind zones, fluid zones (viscosity simulation)
+- Gravity inversion, random force fields, teleporters
 
-## Android APK derleme
+### Procedural Track Generation
+- Seed-based deterministic generation
+- Sections: funnel start, chaos zone, skill section, checkpoint, steep drop, split path, final arena
+- Multiple obstacle types: spinners, pendulums, oscillators, bumpers, trapdoors, conveyor belts, elastic pads
 
-Capacitor ile Android kabuğu eklenmiştir.
+### AI System
+- 4 behavior types: aggressive, balanced, safe, random
+- Path prediction via raycasting
+- Collision avoidance, slip correction, risk evaluation
 
-1. Gereksinimler:
-   - Node.js
-   - Java 21 (veya Gradle'ın desteklediği uygun JDK)
-   - Android SDK (ANDROID_HOME veya ANDROID_SDK_ROOT tanımlı)
-2. Komut:
+### Rendering
+- Animated gradient backgrounds
+- Glow/bloom pipeline
+- Motion trails, particle effects
+- Screen shake on impacts
+- Slow-motion on key events (1st place finish)
 
-```bash
-npm install
-npm run build:apk
+### Camera System
+- Follow leader / Follow pack / Cinematic / Overview / Free modes
+- Auto-zoom based on marble spread
+- Dramatic finish zoom
+- Pan and pinch-zoom support
+
+### Audio
+- Adaptive ambient music (intensity follows race action)
+- Spatial bounce/collision sounds with stereo panning
+- Victory fanfare
+
+### Mobile Optimization
+- Adaptive quality (LOW/MEDIUM/HIGH) based on FPS
+- Touch controls: tap to focus, swipe to pan, pinch to zoom
+- Battery optimization: pause when off-screen, visibility API
+
+### Replay System
+- Deterministic recording at 30fps
+- Interpolated playback with speed control
+
+## Controls
+
+| Action | Desktop | Mobile |
+|--------|---------|--------|
+| Pan | Click + drag | Swipe |
+| Zoom | Mouse wheel | Pinch |
+| Focus marble | Click on marble | Tap on marble |
+
+## Architecture
+
+```
+src/
+├── physics/    # Core physics engine
+│   ├── engine.js      # Integrator, solver, simulation loop
+│   ├── collision.js    # SAT detection, contact resolution
+│   ├── forces.js       # Gravity, drag, force zones
+│   ├── marble.js       # Rigid body marble class
+│   └── materials.js    # Surface material definitions
+├── render/     # Rendering pipeline
+│   ├── renderer.js     # Main draw pipeline
+│   ├── camera.js       # Cinematic camera system
+│   └── effects.js      # Particles, bloom, screen flash
+├── procedural/ # Content generation
+│   ├── track.js        # Procedural track builder
+│   └── obstacles.js    # Obstacle factory (7+ types)
+├── ai/         # Marble AI
+│   └── behavior.js     # AI behavior system
+├── mobile/     # Mobile optimization
+│   ├── touch.js        # Touch input handler
+│   └── performance.js  # Adaptive quality monitor
+├── audio/      # Sound system
+│   └── audio.js        # Adaptive music + spatial SFX
+└── replay/     # Replay system
+    └── replay.js       # Recording + playback
 ```
 
-APK çıktısı:
+## Browser Support
 
-`android/app/build/outputs/apk/debug/app-debug.apk`
+- Chrome 80+
+- Firefox 78+
+- Safari 14+
+- Edge 80+
+- Mobile Chrome / Safari
 
-## Medya lisansları (telifsiz stok)
+## License
 
-### Görseller
-
-- `assets/images/countryside.webp`  
-  Kaynak: `Landscape-countryside-way-fields (24243301441).jpg` (Wikimedia Commons)  
-  Lisans: **CC0 1.0 (Public Domain Dedication)**
-
-- `assets/images/river.webp`  
-  Kaynak: `Beautiful river landscape in the fall.jpg` (Wikimedia Commons)  
-  Lisans: **Public Domain**
-
-- `assets/images/autumn.webp`  
-  Kaynak: `Beautiful autumn day.jpg` (Wikimedia Commons)  
-  Lisans: **Public Domain**
-
-### Müzik / Ambiyans
-
-- `assets/music/gymnopedie-focus.ogg`  
-  Kaynak: `Gymnopedie No. 1..ogg` (Wikimedia Commons)  
-  Lisans: **CC0 1.0**
-
-- `assets/music/waves-focus.ogg`  
-  Kaynak: `Waves.ogg` (Wikimedia Commons)  
-  Lisans: **Public Domain**
-
-- `assets/music/campfire-focus.ogg`  
-  Kaynak: `Campfire sound ambience.ogg` (Wikimedia Commons)  
-  Lisans: **CC BY 3.0** (Atıf: Glaneur de sons)
+ISC

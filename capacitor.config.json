@@ -1,5 +1,12 @@
 {
-  "appId": "com.admlyz.focuspomodoro",
-  "appName": "Mobil Focus Pomodoro",
-  "webDir": "dist"
+  "appId": "com.marblerace.simulator",
+  "appName": "Marble Race",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0a0a1a"
+  }
 }
