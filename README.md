@@ -10,6 +10,9 @@ Mobil cihazlara uygun, kurulum yapılabilen (PWA) basit bir Pomodoro uygulaması
 - Yerel depolamada ayarların saklanması
 - Seans bitiminde ses + titreşim + bildirim denemesi
 - Service Worker ile temel offline kullanım
+- Gelişmiş animasyonlar (cinematic arka plan, yüzen glow efektleri, dinamik progress)
+- Telifsiz stok görsel galerisi
+- Telifsiz stok odak müzik/ambiyans oynatıcı (parça seçimi + ses kontrolü)
 
 ## Çalıştırma
 
@@ -46,3 +49,33 @@ npm run build:apk
 APK çıktısı:
 
 `android/app/build/outputs/apk/debug/app-debug.apk`
+
+## Medya lisansları (telifsiz stok)
+
+### Görseller
+
+- `assets/images/countryside.webp`  
+  Kaynak: `Landscape-countryside-way-fields (24243301441).jpg` (Wikimedia Commons)  
+  Lisans: **CC0 1.0 (Public Domain Dedication)**
+
+- `assets/images/river.webp`  
+  Kaynak: `Beautiful river landscape in the fall.jpg` (Wikimedia Commons)  
+  Lisans: **Public Domain**
+
+- `assets/images/autumn.webp`  
+  Kaynak: `Beautiful autumn day.jpg` (Wikimedia Commons)  
+  Lisans: **Public Domain**
+
+### Müzik / Ambiyans
+
+- `assets/music/gymnopedie-focus.ogg`  
+  Kaynak: `Gymnopedie No. 1..ogg` (Wikimedia Commons)  
+  Lisans: **CC0 1.0**
+
+- `assets/music/waves-focus.ogg`  
+  Kaynak: `Waves.ogg` (Wikimedia Commons)  
+  Lisans: **Public Domain**
+
+- `assets/music/campfire-focus.ogg`  
+  Kaynak: `Campfire sound ambience.ogg` (Wikimedia Commons)  
+  Lisans: **CC BY 3.0** (Atıf: Glaneur de sons)

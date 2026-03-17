@@ -1,4 +1,4 @@
-const CACHE_NAME = "focus-pomodoro-v1";
+const CACHE_NAME = "focus-pomodoro-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,6 +6,12 @@ const ASSETS = [
   "./app.js",
   "./manifest.webmanifest",
   "./icon.svg",
+  "./assets/images/autumn.webp",
+  "./assets/images/countryside.webp",
+  "./assets/images/river.webp",
+  "./assets/music/campfire-focus.ogg",
+  "./assets/music/gymnopedie-focus.ogg",
+  "./assets/music/waves-focus.ogg",
 ];
 
 self.addEventListener("install", (event) => {

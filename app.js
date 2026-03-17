@@ -1,4 +1,5 @@
-const STORAGE_KEY = "focus-pomodoro-settings-v1";
+const SETTINGS_STORAGE_KEY = "focus-pomodoro-settings-v1";
+const MEDIA_STORAGE_KEY = "focus-pomodoro-media-v1";
 
 const DEFAULT_SETTINGS = {
   focusMinutes: 25,
@@ -6,6 +7,45 @@ const DEFAULT_SETTINGS = {
   longBreakMinutes: 15,
   longBreakEvery: 4,
 };
+
+const VISUALS = [
+  {
+    src: "assets/images/countryside.webp",
+    title: "Countryside Path",
+    credit: "CC0 · Pixel.la Free Stock Photos / Wikimedia Commons",
+  },
+  {
+    src: "assets/images/river.webp",
+    title: "River in Fall",
+    credit: "Public Domain · U.S. Fish and Wildlife Service / Wikimedia Commons",
+  },
+  {
+    src: "assets/images/autumn.webp",
+    title: "Beautiful Autumn Day",
+    credit: "Public Domain · Photos Public Domain / Wikimedia Commons",
+  },
+];
+
+const TRACKS = [
+  {
+    id: "gymnopedie",
+    title: "Gymnopédie No.1 (Focus)",
+    src: "assets/music/gymnopedie-focus.ogg",
+    credit: "CC0 1.0 · Kevin MacLeod düzenlemesi / Wikimedia Commons",
+  },
+  {
+    id: "waves",
+    title: "Ocean Waves Ambience",
+    src: "assets/music/waves-focus.ogg",
+    credit: "Public Domain · Dsw4 / Wikimedia Commons",
+  },
+  {
+    id: "campfire",
+    title: "Campfire Ambience",
+    src: "assets/music/campfire-focus.ogg",
+    credit: "CC BY 3.0 · Glaneur de sons / Wikimedia Commons",
+  },
+];
 
 const state = {
   mode: "focus",
@@ -15,17 +55,33 @@ const state = {
   intervalId: null,
   phaseDurationSeconds: DEFAULT_SETTINGS.focusMinutes * 60,
   settings: { ...DEFAULT_SETTINGS },
+  visualIndex: 0,
+  selectedTrackId: TRACKS[0].id,
+  volume: 0.45,
+  isMuted: false,
 };
 
 const modeLabel = document.getElementById("modeLabel");
 const sessionCount = document.getElementById("sessionCount");
 const timerDisplay = document.getElementById("timerDisplay");
 const progressBar = document.getElementById("progressBar");
+const bgImage = document.getElementById("bgImage");
+const galleryImage = document.getElementById("galleryImage");
+const galleryCaption = document.getElementById("galleryCaption");
 
 const startPauseBtn = document.getElementById("startPauseBtn");
 const resetBtn = document.getElementById("resetBtn");
 const skipBtn = document.getElementById("skipBtn");
 const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+const prevVisualBtn = document.getElementById("prevVisualBtn");
+const nextVisualBtn = document.getElementById("nextVisualBtn");
+
+const musicSelect = document.getElementById("musicSelect");
+const volumeInput = document.getElementById("volumeInput");
+const musicToggleBtn = document.getElementById("musicToggleBtn");
+const musicMuteBtn = document.getElementById("musicMuteBtn");
+const trackMeta = document.getElementById("trackMeta");
+const ambientPlayer = document.getElementById("ambientPlayer");
 
 const focusInput = document.getElementById("focusInput");
 const shortBreakInput = document.getElementById("shortBreakInput");
@@ -34,7 +90,7 @@ const cycleInput = document.getElementById("cycleInput");
 
 function loadSettings() {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!saved) {
       return;
     }
@@ -50,6 +106,36 @@ function loadSettings() {
   }
 }
 
+function loadMediaPreferences() {
+  try {
+    const saved = localStorage.getItem(MEDIA_STORAGE_KEY);
+    if (!saved) {
+      return;
+    }
+    const parsed = JSON.parse(saved);
+    state.visualIndex = clamp(Number(parsed.visualIndex), 0, VISUALS.length - 1, 0);
+    state.selectedTrackId = TRACKS.some((track) => track.id === parsed.selectedTrackId)
+      ? parsed.selectedTrackId
+      : TRACKS[0].id;
+    state.volume = clamp(Number(parsed.volume * 100), 0, 100, 45) / 100;
+    state.isMuted = Boolean(parsed.isMuted);
+  } catch (_) {
+    // Varsayılan ayarlar ile devam et.
+  }
+}
+
+function saveMediaPreferences() {
+  localStorage.setItem(
+    MEDIA_STORAGE_KEY,
+    JSON.stringify({
+      visualIndex: state.visualIndex,
+      selectedTrackId: state.selectedTrackId,
+      volume: state.volume,
+      isMuted: state.isMuted,
+    }),
+  );
+}
+
 function saveSettings() {
   const nextSettings = {
     focusMinutes: clamp(Number(focusInput.value), 1, 90, state.settings.focusMinutes),
@@ -59,7 +145,7 @@ function saveSettings() {
   };
 
   state.settings = nextSettings;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSettings));
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
   initializeCurrentMode();
   updateUI();
 }
@@ -69,6 +155,7 @@ function fillInputs() {
   shortBreakInput.value = String(state.settings.shortBreakMinutes);
   longBreakInput.value = String(state.settings.longBreakMinutes);
   cycleInput.value = String(state.settings.longBreakEvery);
+  volumeInput.value = String(Math.round(state.volume * 100));
 }
 
 function clamp(value, min, max, fallback) {
@@ -110,7 +197,6 @@ function startTimer() {
   state.running = true;
   startPauseBtn.textContent = "Duraklat";
 
-  // Arka planda zaman kaymasını azaltmak için her tikte gerçek zaman farkı hesaplanır.
   let lastTick = performance.now();
 
   state.intervalId = window.setInterval(() => {
@@ -127,6 +213,7 @@ function startTimer() {
     }
     updateUI();
   }, 250);
+  updateUI();
 }
 
 function stopTimer() {
@@ -136,6 +223,7 @@ function stopTimer() {
     clearInterval(state.intervalId);
     state.intervalId = null;
   }
+  updateUI();
 }
 
 function resetCurrentPhase() {
@@ -149,6 +237,7 @@ function skipPhase() {
 }
 
 function onPhaseFinished(skipNotification = false) {
+  const wasMusicPlaying = !ambientPlayer.paused;
   stopTimer();
 
   if (state.mode === "focus") {
@@ -159,6 +248,8 @@ function onPhaseFinished(skipNotification = false) {
     state.mode = "focus";
   }
 
+  syncVisualWithMode();
+  syncTrackWithMode(wasMusicPlaying);
   state.phaseDurationSeconds = getModeDurationSeconds(state.mode);
   state.remainingSeconds = state.phaseDurationSeconds;
 
@@ -169,9 +260,30 @@ function onPhaseFinished(skipNotification = false) {
   }
 }
 
+function syncVisualWithMode() {
+  if (state.mode === "focus") {
+    setVisual(0);
+  } else if (state.mode === "shortBreak") {
+    setVisual(1);
+  } else {
+    setVisual(2);
+  }
+}
+
+function syncTrackWithMode(keepPlaying) {
+  if (state.mode === "focus") {
+    selectTrack("gymnopedie", keepPlaying);
+  } else if (state.mode === "shortBreak") {
+    selectTrack("waves", keepPlaying);
+  } else {
+    selectTrack("campfire", keepPlaying);
+  }
+}
+
 function updateUI() {
   timerDisplay.textContent = formatSeconds(state.remainingSeconds);
   sessionCount.textContent = `Tamamlanan odak: ${state.completedFocusSessions}`;
+  document.body.classList.toggle("is-running", state.running);
 
   if (state.mode === "focus") {
     modeLabel.textContent = "Odak";
@@ -193,6 +305,79 @@ function updateUI() {
   const completed = state.phaseDurationSeconds - state.remainingSeconds;
   const progress = (completed / state.phaseDurationSeconds) * 100;
   progressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+}
+
+function setVisual(index) {
+  const normalized = (index + VISUALS.length) % VISUALS.length;
+  state.visualIndex = normalized;
+  const visual = VISUALS[normalized];
+  galleryImage.src = visual.src;
+  bgImage.src = visual.src;
+  galleryCaption.textContent = `${visual.title} · ${visual.credit}`;
+  saveMediaPreferences();
+}
+
+function goToNextVisual() {
+  setVisual(state.visualIndex + 1);
+}
+
+function goToPrevVisual() {
+  setVisual(state.visualIndex - 1);
+}
+
+function populateTrackSelect() {
+  TRACKS.forEach((track) => {
+    const option = document.createElement("option");
+    option.value = track.id;
+    option.textContent = track.title;
+    musicSelect.append(option);
+  });
+}
+
+function selectTrack(trackId, autoplayIfPlaying = false) {
+  const track = TRACKS.find((item) => item.id === trackId);
+  if (!track) {
+    return;
+  }
+  const keepPlaying = autoplayIfPlaying && !ambientPlayer.paused;
+  state.selectedTrackId = track.id;
+  musicSelect.value = track.id;
+  ambientPlayer.src = track.src;
+  ambientPlayer.volume = state.volume;
+  ambientPlayer.muted = state.isMuted;
+  trackMeta.textContent = `${track.title} · ${track.credit}`;
+  saveMediaPreferences();
+
+  if (keepPlaying) {
+    ambientPlayer.play().catch(() => {});
+  }
+}
+
+function toggleMusic() {
+  if (ambientPlayer.paused) {
+    ambientPlayer.play().then(updateMusicButtons).catch(() => {});
+  } else {
+    ambientPlayer.pause();
+    updateMusicButtons();
+  }
+}
+
+function toggleMute() {
+  state.isMuted = !state.isMuted;
+  ambientPlayer.muted = state.isMuted;
+  saveMediaPreferences();
+  updateMusicButtons();
+}
+
+function updateVolume() {
+  state.volume = clamp(Number(volumeInput.value), 0, 100, 45) / 100;
+  ambientPlayer.volume = state.volume;
+  saveMediaPreferences();
+}
+
+function updateMusicButtons() {
+  musicToggleBtn.textContent = ambientPlayer.paused ? "Müziği başlat" : "Müziği durdur";
+  musicMuteBtn.textContent = state.isMuted ? "Sesi aç" : "Sessize al";
 }
 
 function formatSeconds(totalSeconds) {
@@ -249,6 +434,14 @@ startPauseBtn.addEventListener("click", toggleStartPause);
 resetBtn.addEventListener("click", resetCurrentPhase);
 skipBtn.addEventListener("click", skipPhase);
 saveSettingsBtn.addEventListener("click", saveSettings);
+prevVisualBtn.addEventListener("click", goToPrevVisual);
+nextVisualBtn.addEventListener("click", goToNextVisual);
+musicToggleBtn.addEventListener("click", toggleMusic);
+musicMuteBtn.addEventListener("click", toggleMute);
+volumeInput.addEventListener("input", updateVolume);
+musicSelect.addEventListener("change", (event) => selectTrack(event.target.value, true));
+ambientPlayer.addEventListener("play", updateMusicButtons);
+ambientPlayer.addEventListener("pause", updateMusicButtons);
 
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
@@ -263,6 +456,11 @@ if ("serviceWorker" in navigator) {
 }
 
 loadSettings();
+loadMediaPreferences();
+populateTrackSelect();
 fillInputs();
 initializeCurrentMode();
+setVisual(state.visualIndex);
+selectTrack(state.selectedTrackId);
+updateMusicButtons();
 updateUI();
