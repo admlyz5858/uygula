@@ -19,6 +19,12 @@ android {
         manifestPlaceholders["appLabel"] = "Focus Pomodoro AI"
         val openAiKey = providers.gradleProperty("OPENAI_API_KEY").orNull ?: ""
         buildConfigField("String", "OPENAI_API_KEY", "\"$openAiKey\"")
+        val artifactAbi = providers.gradleProperty("artifactAbi").orNull
+        if (!artifactAbi.isNullOrBlank()) {
+            ndk {
+                abiFilters += artifactAbi
+            }
+        }
     }
 
     signingConfigs {
