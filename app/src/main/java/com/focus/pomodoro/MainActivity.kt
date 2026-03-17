@@ -426,7 +426,7 @@ private fun HistoryScreen(viewModel: HistoryViewModel) {
         items(achievements, key = { it.key }) { item ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "${if (item.unlocked) "✅" else "🔒"} ${item.title}",
+                    "${if (item.unlocked) "[Unlocked]" else "[Locked]"} ${item.title}",
                     modifier = Modifier.padding(12.dp)
                 )
             }
