@@ -1,11 +1,30 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#4f46e5" />
-      <stop offset="100%" stop-color="#6366f1" />
-    </linearGradient>
+    <radialGradient id="bg" cx="50%" cy="50%">
+      <stop offset="0%" stop-color="#1a1a3a"/>
+      <stop offset="100%" stop-color="#0a0a1a"/>
+    </radialGradient>
+    <radialGradient id="marble1" cx="35%" cy="35%">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="30%" stop-color="#ff4466"/>
+      <stop offset="100%" stop-color="#aa1133"/>
+    </radialGradient>
+    <radialGradient id="marble2" cx="35%" cy="35%">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="30%" stop-color="#44ff88"/>
+      <stop offset="100%" stop-color="#11aa44"/>
+    </radialGradient>
+    <radialGradient id="marble3" cx="35%" cy="35%">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="30%" stop-color="#4488ff"/>
+      <stop offset="100%" stop-color="#1144aa"/>
+    </radialGradient>
   </defs>
-  <rect width="256" height="256" rx="56" fill="#0f172a" />
-  <circle cx="128" cy="128" r="76" fill="none" stroke="url(#g)" stroke-width="18" />
-  <path d="M128 74v54l38 25" fill="none" stroke="#e2e8f0" stroke-linecap="round" stroke-width="14" />
+  <rect width="512" height="512" rx="80" fill="url(#bg)"/>
+  <circle cx="180" cy="200" r="55" fill="url(#marble1)" opacity="0.95"/>
+  <circle cx="330" cy="250" r="50" fill="url(#marble2)" opacity="0.95"/>
+  <circle cx="250" cy="350" r="45" fill="url(#marble3)" opacity="0.95"/>
+  <line x1="80" y1="420" x2="430" y2="420" stroke="#6366f1" stroke-width="6" stroke-linecap="round" opacity="0.6"/>
+  <line x1="60" y1="150" x2="60" y2="420" stroke="#6366f1" stroke-width="4" stroke-linecap="round" opacity="0.3"/>
+  <line x1="450" y1="180" x2="450" y2="420" stroke="#6366f1" stroke-width="4" stroke-linecap="round" opacity="0.3"/>
 </svg>

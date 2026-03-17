@@ -1,129 +1,78 @@
-<!doctype html>
-<html lang="tr">
-  <head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta id="themeColorMeta" name="theme-color" content="#0f172a" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0a0a1a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Ultra-realistic marble race physics simulator with procedural tracks, AI marbles, and cinematic visuals" />
+    <title>Marble Race Simulator</title>
     <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
-    <title>Mobil Focus Pomodoro</title>
-  </head>
-  <body>
-    <div class="cinematic-bg" aria-hidden="true">
-      <img id="bgImage" class="bg-image" src="assets/images/autumn.webp" alt="" />
-      <div class="bg-overlay"></div>
-      <div class="floating floating--one"></div>
-      <div class="floating floating--two"></div>
-      <div class="floating floating--three"></div>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="uiOverlay" class="ui-overlay">
+        <div class="top-bar">
+            <div class="logo">MARBLE RACE</div>
+            <div class="top-controls">
+                <button id="fpsToggle" class="icon-btn" title="Toggle FPS">📊</button>
+                <button id="leaderboardToggle" class="icon-btn" title="Toggle Leaderboard">🏆</button>
+                <button id="muteBtn" class="icon-btn" title="Toggle Sound">🔊</button>
+            </div>
+        </div>
+
+        <div class="control-panel" id="controlPanel">
+            <div class="panel-header" id="panelToggle">
+                <span>Controls</span>
+                <span class="toggle-arrow">▲</span>
+            </div>
+            <div class="panel-body" id="panelBody">
+                <div class="control-row">
+                    <label>Marbles</label>
+                    <input type="number" id="marbleCount" min="2" max="30" value="12" />
+                </div>
+                <div class="control-row">
+                    <label>Seed</label>
+                    <div class="seed-row">
+                        <input type="number" id="seedInput" />
+                        <button id="newSeedBtn" class="small-btn" title="Random Seed">🎲</button>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label>Camera</label>
+                    <select id="cameraMode">
+                        <option value="follow_leader">Follow Leader</option>
+                        <option value="follow_pack">Follow Pack</option>
+                        <option value="cinematic">Cinematic</option>
+                        <option value="overview">Overview</option>
+                        <option value="free">Free</option>
+                    </select>
+                </div>
+                <div class="control-row">
+                    <label>Speed</label>
+                    <select id="speedSelect">
+                        <option value="0.25">0.25x</option>
+                        <option value="0.5">0.5x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x</option>
+                    </select>
+                </div>
+                <div class="button-row">
+                    <button id="startBtn" class="action-btn primary">▶ START RACE</button>
+                    <button id="restartBtn" class="action-btn secondary">↻ NEW RACE</button>
+                    <button id="replayBtn" class="action-btn secondary">⏪ REPLAY</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="rankingsList" class="rankings-list"></div>
     </div>
 
-    <main class="app">
-      <header class="app__header">
-        <div class="header-top">
-          <div>
-            <h1>Focus Pomodoro</h1>
-            <p>Arka plana gömülü görseller + şeffaf arayüz</p>
-            <p id="themeStatus" class="theme-status">Tema: Otomatik</p>
-          </div>
-          <div class="theme-switch" role="group" aria-label="Tema seçimi">
-            <button id="themeAutoBtn" class="btn btn--tiny btn--secondary theme-btn">Oto</button>
-            <button id="themeLightBtn" class="btn btn--tiny btn--secondary theme-btn">Açık</button>
-            <button id="themeDarkBtn" class="btn btn--tiny btn--secondary theme-btn">Koyu</button>
-          </div>
-        </div>
-      </header>
-
-      <section class="timer-card">
-        <div class="mode-row">
-          <span id="modeLabel" class="mode-badge mode-badge--focus">Odak</span>
-          <span id="sessionCount" class="session-count">Tamamlanan odak: 0</span>
-        </div>
-
-        <div class="timer-shell">
-          <div id="timerAura" class="timer-aura"></div>
-          <h2 id="timerDisplay" class="timer-display">25:00</h2>
-        </div>
-        <div class="progress-track" aria-hidden="true">
-          <div id="progressBar" class="progress-bar"></div>
-        </div>
-
-        <div class="controls">
-          <button id="startPauseBtn" class="btn btn--primary">Başlat</button>
-          <button id="resetBtn" class="btn btn--secondary">Sıfırla</button>
-          <button id="skipBtn" class="btn btn--ghost">Geç</button>
-        </div>
-      </section>
-
-      <section class="media-card">
-        <div class="media-head">
-          <h3>Arka plan görselleri</h3>
-          <div class="media-actions">
-            <button id="prevVisualBtn" class="btn btn--tiny btn--secondary">Önceki</button>
-            <button id="nextVisualBtn" class="btn btn--tiny btn--secondary">Sonraki</button>
-          </div>
-        </div>
-        <p id="galleryCaption" class="bg-caption">Arka plan: Autumn Scene</p>
-      </section>
-
-      <section class="music-card">
-        <h3>Odak müzikleri / ambiyans</h3>
-        <p class="music-subtitle">Telifsiz stok ses arşivi</p>
-        <div class="music-grid">
-          <label>
-            <span>Parça seç</span>
-            <select id="musicSelect"></select>
-          </label>
-          <label>
-            <span>Ses seviyesi</span>
-            <input id="volumeInput" type="range" min="0" max="100" value="45" />
-          </label>
-        </div>
-        <div class="controls controls--music">
-          <button id="musicToggleBtn" class="btn btn--primary">Müziği başlat</button>
-          <button id="musicMuteBtn" class="btn btn--ghost">Sessize al</button>
-        </div>
-        <p id="trackMeta" class="track-meta"></p>
-        <audio id="ambientPlayer" preload="metadata" loop playsinline></audio>
-      </section>
-
-      <section class="settings-card">
-        <h3>Ayarlar</h3>
-        <div class="settings-grid">
-          <label>
-            <span>Odak (dk)</span>
-            <input id="focusInput" type="number" min="1" max="90" value="25" />
-          </label>
-          <label>
-            <span>Kısa mola (dk)</span>
-            <input id="shortBreakInput" type="number" min="1" max="30" value="5" />
-          </label>
-          <label>
-            <span>Uzun mola (dk)</span>
-            <input id="longBreakInput" type="number" min="5" max="60" value="15" />
-          </label>
-          <label>
-            <span>Uzun mola döngüsü</span>
-            <input id="cycleInput" type="number" min="2" max="8" value="4" />
-          </label>
-        </div>
-        <button id="saveSettingsBtn" class="btn btn--secondary btn--full">Ayarları kaydet</button>
-      </section>
-
-      <section class="tips-card">
-        <h3>Hızlı ipucu</h3>
-        <ul>
-          <li>Her odak seansında tek bir göreve odaklan.</li>
-          <li>Bildirimleri kapatıp telefonu sessize al.</li>
-          <li>Molada ayağa kalkıp kısa yürüyüş yap.</li>
-        </ul>
-      </section>
-
-      <section class="credits-card">
-        <h3>Medya kaynakları</h3>
-        <p>Görseller ve müzikler Wikimedia Commons üzerinden, telifsiz / açık lisanslı stok içeriklerdir.</p>
-      </section>
-    </main>
-
-    <script src="app.js"></script>
-  </body>
+    <script type="module" src="app.js"></script>
+</body>
 </html>

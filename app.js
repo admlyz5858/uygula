@@ -1,546 +1,501 @@
-const SETTINGS_STORAGE_KEY = "focus-pomodoro-settings-v1";
-const MEDIA_STORAGE_KEY = "focus-pomodoro-media-v2";
-const THEME_STORAGE_KEY = "focus-pomodoro-theme-v1";
-const DEFAULT_VOLUME = 0.75;
+import { PhysicsEngine } from './src/physics/engine.js';
+import { Marble } from './src/physics/marble.js';
+import { Renderer } from './src/render/renderer.js';
+import { Camera } from './src/render/camera.js';
+import { buildTrack } from './src/procedural/track.js';
+import { MarbleAI } from './src/ai/behavior.js';
+import { TouchController } from './src/mobile/touch.js';
+import { PerformanceMonitor, setupVisibilityHandler } from './src/mobile/performance.js';
+import { AudioEngine } from './src/audio/audio.js';
+import { ReplaySystem } from './src/replay/replay.js';
 
-const DEFAULT_SETTINGS = {
-  focusMinutes: 25,
-  shortBreakMinutes: 5,
-  longBreakMinutes: 15,
-  longBreakEvery: 4,
-};
-
-const VISUALS = [
-  {
-    src: "assets/images/countryside.webp",
-    title: "Countryside Path",
-    credit: "CC0 · Pixel.la Free Stock Photos / Wikimedia Commons",
-  },
-  {
-    src: "assets/images/river.webp",
-    title: "River in Fall",
-    credit: "Public Domain · U.S. Fish and Wildlife Service / Wikimedia Commons",
-  },
-  {
-    src: "assets/images/autumn.webp",
-    title: "Beautiful Autumn Day",
-    credit: "Public Domain · Photos Public Domain / Wikimedia Commons",
-  },
+const MARBLE_NAMES = [
+    'Crimson', 'Emerald', 'Sapphire', 'Amber', 'Violet',
+    'Cyan', 'Coral', 'Lime', 'Indigo', 'Rose',
+    'Teal', 'Gold', 'Scarlet', 'Azure', 'Orchid',
+    'Ruby', 'Jade', 'Cobalt', 'Tangerine', 'Magenta',
 ];
 
-const TRACKS = [
-  {
-    id: "gymnopedie",
-    title: "Gymnopédie No.1 (Focus)",
-    src: "assets/music/gymnopedie-focus.ogg",
-    credit: "CC0 1.0 · Kevin MacLeod düzenlemesi / Wikimedia Commons",
-  },
-  {
-    id: "waves",
-    title: "Ocean Waves Ambience",
-    src: "assets/music/waves-focus.ogg",
-    credit: "Public Domain · Dsw4 / Wikimedia Commons",
-  },
-  {
-    id: "campfire",
-    title: "Campfire Ambience",
-    src: "assets/music/campfire-focus.ogg",
-    credit: "CC BY 3.0 · Glaneur de sons / Wikimedia Commons",
-  },
-];
+const AI_TYPES = ['aggressive', 'balanced', 'safe', 'random'];
 
-const state = {
-  mode: "focus",
-  remainingSeconds: DEFAULT_SETTINGS.focusMinutes * 60,
-  running: false,
-  completedFocusSessions: 0,
-  intervalId: null,
-  phaseDurationSeconds: DEFAULT_SETTINGS.focusMinutes * 60,
-  settings: { ...DEFAULT_SETTINGS },
-  visualIndex: 0,
-  selectedTrackId: TRACKS[0].id,
-  volume: DEFAULT_VOLUME,
-  isMuted: false,
-  themePreference: "system",
-};
-
-const modeLabel = document.getElementById("modeLabel");
-const sessionCount = document.getElementById("sessionCount");
-const timerDisplay = document.getElementById("timerDisplay");
-const progressBar = document.getElementById("progressBar");
-const bgImage = document.getElementById("bgImage");
-const galleryCaption = document.getElementById("galleryCaption");
-const themeColorMeta = document.getElementById("themeColorMeta");
-const themeStatus = document.getElementById("themeStatus");
-
-const startPauseBtn = document.getElementById("startPauseBtn");
-const resetBtn = document.getElementById("resetBtn");
-const skipBtn = document.getElementById("skipBtn");
-const saveSettingsBtn = document.getElementById("saveSettingsBtn");
-const prevVisualBtn = document.getElementById("prevVisualBtn");
-const nextVisualBtn = document.getElementById("nextVisualBtn");
-const themeAutoBtn = document.getElementById("themeAutoBtn");
-const themeLightBtn = document.getElementById("themeLightBtn");
-const themeDarkBtn = document.getElementById("themeDarkBtn");
-
-const musicSelect = document.getElementById("musicSelect");
-const volumeInput = document.getElementById("volumeInput");
-const musicToggleBtn = document.getElementById("musicToggleBtn");
-const musicMuteBtn = document.getElementById("musicMuteBtn");
-const trackMeta = document.getElementById("trackMeta");
-const ambientPlayer = document.getElementById("ambientPlayer");
-
-const focusInput = document.getElementById("focusInput");
-const shortBreakInput = document.getElementById("shortBreakInput");
-const longBreakInput = document.getElementById("longBreakInput");
-const cycleInput = document.getElementById("cycleInput");
-
-const systemThemeMedia = window.matchMedia("(prefers-color-scheme: dark)");
-
-function loadSettings() {
-  try {
-    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!saved) {
-      return;
+class MarbleRaceApp {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d', { alpha: false });
+        this.engine = new PhysicsEngine();
+        this.renderer = new Renderer(this.canvas);
+        this.audio = new AudioEngine();
+        this.perf = new PerformanceMonitor();
+        this.replay = new ReplaySystem();
+        this.touch = null;
+        this.ais = [];
+        this.raceState = 'idle';
+        this.raceTimer = 0;
+        this.countdownTimer = 0;
+        this.finishY = 0;
+        this.rankings = [];
+        this.nextRank = 1;
+        this.seed = Date.now();
+        this.marbleCount = 12;
+        this.lastFrameTime = 0;
+        this.running = false;
+        this.paused = false;
+        this.showLeaderboard = true;
+        this.showFPS = false;
+        this.autoRestart = false;
+        this.uiElements = {};
     }
-    const parsed = JSON.parse(saved);
-    state.settings = {
-      focusMinutes: clamp(parsed.focusMinutes, 1, 90, DEFAULT_SETTINGS.focusMinutes),
-      shortBreakMinutes: clamp(parsed.shortBreakMinutes, 1, 30, DEFAULT_SETTINGS.shortBreakMinutes),
-      longBreakMinutes: clamp(parsed.longBreakMinutes, 5, 60, DEFAULT_SETTINGS.longBreakMinutes),
-      longBreakEvery: clamp(parsed.longBreakEvery, 2, 8, DEFAULT_SETTINGS.longBreakEvery),
-    };
-  } catch (_) {
-    state.settings = { ...DEFAULT_SETTINGS };
-  }
-}
 
-function loadMediaPreferences() {
-  try {
-    const saved = localStorage.getItem(MEDIA_STORAGE_KEY);
-    if (!saved) {
-      return;
+    async init() {
+        this.setupCanvas();
+        this.setupUI();
+        this.touch = new TouchController(this.canvas, this.renderer.camera);
+        this.touch.onTap = (x, y) => this.handleTap(x, y);
+
+        this.perf.onQualityChange = (level) => {
+            this.renderer.setQuality(level);
+        };
+
+        setupVisibilityHandler(
+            () => { this.paused = false; this.audio.resume(); },
+            () => { this.paused = true; this.audio.suspend(); }
+        );
+
+        window.addEventListener('resize', () => this.setupCanvas());
+
+        this.startNewRace();
+        this.running = true;
+        this.lastFrameTime = performance.now();
+        requestAnimationFrame((t) => this.gameLoop(t));
     }
-    const parsed = JSON.parse(saved);
-    state.visualIndex = clamp(Number(parsed.visualIndex), 0, VISUALS.length - 1, 0);
-    state.selectedTrackId = TRACKS.some((track) => track.id === parsed.selectedTrackId)
-      ? parsed.selectedTrackId
-      : TRACKS[0].id;
-    state.volume = clamp(Number(parsed.volume * 100), 0, 100, DEFAULT_VOLUME * 100) / 100;
-    state.isMuted = Boolean(parsed.isMuted);
-  } catch (_) {
-    // Varsayılan ayarlar ile devam et.
-  }
-}
 
-function loadThemePreference() {
-  try {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    if (saved === "light" || saved === "dark" || saved === "system") {
-      state.themePreference = saved;
+    setupCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        this.canvas.width = w * dpr;
+        this.canvas.height = h * dpr;
+        this.canvas.style.width = w + 'px';
+        this.canvas.style.height = h + 'px';
+        this.ctx.scale(dpr, dpr);
+        this.renderer.resize(w * dpr, h * dpr);
     }
-  } catch (_) {
-    state.themePreference = "system";
-  }
-}
 
-function saveMediaPreferences() {
-  localStorage.setItem(
-    MEDIA_STORAGE_KEY,
-    JSON.stringify({
-      visualIndex: state.visualIndex,
-      selectedTrackId: state.selectedTrackId,
-      volume: state.volume,
-      isMuted: state.isMuted,
-    }),
-  );
-}
+    setupUI() {
+        this.uiElements = {
+            startBtn: document.getElementById('startBtn'),
+            restartBtn: document.getElementById('restartBtn'),
+            marbleCountInput: document.getElementById('marbleCount'),
+            seedInput: document.getElementById('seedInput'),
+            cameraSelect: document.getElementById('cameraMode'),
+            speedSelect: document.getElementById('speedSelect'),
+            muteBtn: document.getElementById('muteBtn'),
+            fpsToggle: document.getElementById('fpsToggle'),
+            leaderboardToggle: document.getElementById('leaderboardToggle'),
+            replayBtn: document.getElementById('replayBtn'),
+            newSeedBtn: document.getElementById('newSeedBtn'),
+        };
 
-function saveSettings() {
-  const nextSettings = {
-    focusMinutes: clamp(Number(focusInput.value), 1, 90, state.settings.focusMinutes),
-    shortBreakMinutes: clamp(Number(shortBreakInput.value), 1, 30, state.settings.shortBreakMinutes),
-    longBreakMinutes: clamp(Number(longBreakInput.value), 5, 60, state.settings.longBreakMinutes),
-    longBreakEvery: clamp(Number(cycleInput.value), 2, 8, state.settings.longBreakEvery),
-  };
+        const ui = this.uiElements;
 
-  state.settings = nextSettings;
-  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
-  initializeCurrentMode();
-  updateUI();
-}
-
-function fillInputs() {
-  focusInput.value = String(state.settings.focusMinutes);
-  shortBreakInput.value = String(state.settings.shortBreakMinutes);
-  longBreakInput.value = String(state.settings.longBreakMinutes);
-  cycleInput.value = String(state.settings.longBreakEvery);
-  volumeInput.value = String(Math.round(state.volume * 100));
-}
-
-function clamp(value, min, max, fallback) {
-  if (Number.isNaN(value) || !Number.isFinite(value)) {
-    return fallback;
-  }
-  return Math.min(max, Math.max(min, Math.round(value)));
-}
-
-function getResolvedTheme() {
-  if (state.themePreference === "dark" || state.themePreference === "light") {
-    return state.themePreference;
-  }
-  return systemThemeMedia.matches ? "dark" : "light";
-}
-
-function applyTheme() {
-  const resolvedTheme = getResolvedTheme();
-  document.body.classList.remove("theme-light", "theme-dark");
-  document.body.classList.add(`theme-${resolvedTheme}`);
-  updateThemeButtons();
-
-  if (themeColorMeta) {
-    themeColorMeta.setAttribute("content", resolvedTheme === "dark" ? "#0f172a" : "#f8fafc");
-  }
-}
-
-function setThemePreference(theme) {
-  if (theme !== "system" && theme !== "light" && theme !== "dark") {
-    return;
-  }
-  state.themePreference = theme;
-  localStorage.setItem(THEME_STORAGE_KEY, theme);
-  applyTheme();
-}
-
-function updateThemeButtons() {
-  themeAutoBtn.classList.toggle("is-active", state.themePreference === "system");
-  themeLightBtn.classList.toggle("is-active", state.themePreference === "light");
-  themeDarkBtn.classList.toggle("is-active", state.themePreference === "dark");
-  const resolvedTheme = getResolvedTheme();
-  const prefText =
-    state.themePreference === "system"
-      ? `Otomatik (${resolvedTheme === "dark" ? "Koyu" : "Açık"})`
-      : state.themePreference === "dark"
-        ? "Koyu"
-        : "Açık";
-  if (themeStatus) {
-    themeStatus.textContent = `Tema: ${prefText}`;
-  }
-}
-
-function initializeCurrentMode() {
-  const duration = getModeDurationSeconds(state.mode);
-  state.phaseDurationSeconds = duration;
-  state.remainingSeconds = duration;
-  stopTimer();
-}
-
-function getModeDurationSeconds(mode) {
-  if (mode === "focus") {
-    return state.settings.focusMinutes * 60;
-  }
-  if (mode === "shortBreak") {
-    return state.settings.shortBreakMinutes * 60;
-  }
-  return state.settings.longBreakMinutes * 60;
-}
-
-function toggleStartPause() {
-  if (state.running) {
-    stopTimer();
-  } else {
-    startTimer();
-  }
-}
-
-function startTimer() {
-  if (state.running) {
-    return;
-  }
-  state.running = true;
-  startPauseBtn.textContent = "Duraklat";
-
-  let lastTick = performance.now();
-
-  state.intervalId = window.setInterval(() => {
-    const now = performance.now();
-    const elapsed = Math.floor((now - lastTick) / 1000);
-    if (elapsed < 1) {
-      return;
+        if (ui.startBtn) ui.startBtn.addEventListener('click', () => this.startRace());
+        if (ui.restartBtn) ui.restartBtn.addEventListener('click', () => this.startNewRace());
+        if (ui.newSeedBtn) ui.newSeedBtn.addEventListener('click', () => {
+            this.seed = Date.now();
+            if (ui.seedInput) ui.seedInput.value = this.seed;
+            this.startNewRace();
+        });
+        if (ui.cameraSelect) ui.cameraSelect.addEventListener('change', (e) => {
+            this.renderer.camera.setMode(e.target.value);
+            this.renderer.camera.panOffsetX = 0;
+            this.renderer.camera.panOffsetY = 0;
+        });
+        if (ui.speedSelect) ui.speedSelect.addEventListener('change', (e) => {
+            this.engine.slowMotion = parseFloat(e.target.value);
+        });
+        if (ui.muteBtn) ui.muteBtn.addEventListener('click', () => {
+            this.audio.setMuted(!this.audio.muted);
+            ui.muteBtn.textContent = this.audio.muted ? '🔇' : '🔊';
+        });
+        if (ui.fpsToggle) ui.fpsToggle.addEventListener('click', () => {
+            this.showFPS = !this.showFPS;
+        });
+        if (ui.leaderboardToggle) ui.leaderboardToggle.addEventListener('click', () => {
+            this.showLeaderboard = !this.showLeaderboard;
+        });
+        if (ui.replayBtn) ui.replayBtn.addEventListener('click', () => this.toggleReplay());
+        if (ui.seedInput) ui.seedInput.value = this.seed;
+        if (ui.marbleCountInput) ui.marbleCountInput.value = this.marbleCount;
     }
-    lastTick += elapsed * 1000;
-    state.remainingSeconds = Math.max(0, state.remainingSeconds - elapsed);
 
-    if (state.remainingSeconds === 0) {
-      onPhaseFinished();
+    startNewRace() {
+        this.engine = new PhysicsEngine();
+        this.ais = [];
+        this.rankings = [];
+        this.nextRank = 1;
+        this.raceTimer = 0;
+        this.raceState = 'countdown';
+        this.countdownTimer = 3;
+
+        if (this.uiElements.seedInput) {
+            const val = parseInt(this.uiElements.seedInput.value);
+            if (!isNaN(val)) this.seed = val;
+        }
+        if (this.uiElements.marbleCountInput) {
+            const val = parseInt(this.uiElements.marbleCountInput.value);
+            if (!isNaN(val) && val >= 2 && val <= 30) this.marbleCount = val;
+        }
+
+        const trackData = buildTrack(this.engine, this.renderer, this.seed, this.marbleCount);
+        this.finishY = trackData.finishY;
+
+        for (let i = 0; i < this.marbleCount; i++) {
+            const pos = trackData.startPositions[i] || { x: (Math.random() - 0.5) * 200, y: -50 - i * 25 };
+            const color = this.renderer.getMarbleColor(i);
+            const marble = new Marble(pos.x, pos.y, 10 + Math.random() * 4, {
+                color,
+                glowColor: color,
+                name: MARBLE_NAMES[i % MARBLE_NAMES.length],
+                aiType: AI_TYPES[i % AI_TYPES.length],
+                material: 'default',
+            });
+            this.engine.addMarble(marble);
+            this.ais.push(new MarbleAI(marble, marble.aiType));
+        }
+
+        this.engine.paused = true;
+        this.renderer.camera.setMode('follow_pack');
+        this.renderer.camera.targetZoom = 0.6;
+        this.renderer.camera.x = 0;
+        this.renderer.camera.y = trackData.startPositions[0]?.y || 0;
+
+        this.replay.startRecording();
+
+        this.audio.init().then(() => {
+            this.audio.startMusic();
+        });
+
+        this.updateRankingsUI();
     }
-    updateUI();
-  }, 250);
-  updateUI();
+
+    startRace() {
+        if (this.raceState === 'countdown' || this.raceState === 'idle') {
+            this.raceState = 'countdown';
+            this.countdownTimer = 3;
+            this.engine.paused = true;
+        }
+    }
+
+    handleTap(x, y) {
+        if (this.raceState === 'idle') {
+            this.startRace();
+            return;
+        }
+        const closest = this.findClosestMarble(x, y);
+        if (closest && this.raceState === 'racing') {
+            this.renderer.camera.focusOn(closest);
+            setTimeout(() => {
+                this.renderer.camera.setMode('follow_leader');
+            }, 3000);
+        }
+    }
+
+    findClosestMarble(x, y) {
+        let best = null;
+        let bestDist = Infinity;
+        for (const m of this.engine.marbles) {
+            if (!m.alive) continue;
+            const dx = m.x - x;
+            const dy = m.y - y;
+            const d = dx * dx + dy * dy;
+            if (d < bestDist) {
+                bestDist = d;
+                best = m;
+            }
+        }
+        return bestDist < 2500 ? best : null;
+    }
+
+    toggleReplay() {
+        if (this.replay.playing) {
+            this.replay.stopPlayback();
+            this.raceState = 'finished';
+        } else if (this.replay.snapshots.length > 0) {
+            this.replay.startPlayback(1);
+            this.raceState = 'replay';
+        }
+    }
+
+    gameLoop(timestamp) {
+        if (!this.running) return;
+        this.perf.startFrame();
+
+        const dt = Math.min((timestamp - this.lastFrameTime) / 1000, 0.05);
+        this.lastFrameTime = timestamp;
+
+        if (!this.paused) {
+            this.update(dt);
+            this.render(dt);
+        }
+
+        requestAnimationFrame((t) => this.gameLoop(t));
+    }
+
+    update(dt) {
+        if (this.raceState === 'replay') {
+            const frame = this.replay.getPlaybackFrame(dt);
+            if (frame) {
+                this.applyReplayFrame(frame);
+            } else {
+                this.raceState = 'finished';
+            }
+            this.renderer.camera.update(dt, this.engine.marbles);
+            return;
+        }
+
+        if (this.raceState === 'countdown') {
+            this.countdownTimer -= dt;
+            if (this.countdownTimer <= 0) {
+                this.raceState = 'racing';
+                this.engine.paused = false;
+                this.renderer.camera.setMode('follow_leader');
+            }
+            this.renderer.camera.update(dt, this.engine.marbles);
+            return;
+        }
+
+        if (this.raceState !== 'racing' && this.raceState !== 'finished') {
+            this.renderer.camera.update(dt, this.engine.marbles);
+            return;
+        }
+
+        this.raceTimer += dt;
+        const timeScale = this.renderer.slowMo.getScale();
+        this.engine.slowMotion = timeScale;
+        this.engine.update(dt);
+
+        for (const ai of this.ais) {
+            ai.update(dt, this.engine.time, this.engine);
+        }
+
+        for (const marble of this.engine.marbles) {
+            if (!marble.alive) continue;
+            marble.updateTrail();
+
+            if (!marble.finished && marble.y >= this.finishY) {
+                marble.finished = true;
+                marble.finishTime = this.raceTimer;
+                marble.rank = this.nextRank++;
+                this.rankings.push(marble);
+                this.updateRankingsUI();
+
+                if (marble.rank === 1) {
+                    this.renderer.slowMo.trigger(0.3, 2);
+                    this.renderer.camera.shake(15);
+                    this.renderer.flash.trigger('#fff', 0.2);
+                    this.audio.playFinish(1);
+                    this.renderer.camera.dramaticFinishZoom = true;
+                    setTimeout(() => {
+                        this.renderer.camera.dramaticFinishZoom = false;
+                    }, 3000);
+                } else {
+                    this.audio.playFinish(marble.rank);
+                }
+            }
+
+            if (marble.y > this.finishY + 500 || marble.y < -1000 ||
+                marble.x < -2000 || marble.x > 2000) {
+                if (!marble.finished) {
+                    marble.alive = false;
+                }
+            }
+        }
+
+        for (const event of this.engine.events) {
+            if (event.type === 'collision' && event.force > 100) {
+                this.renderer.particles.emitCollision(
+                    event.x, event.y, event.nx, event.ny, event.force, event.marble.color
+                );
+                const impactSquash = Math.min(0.7, event.force * 0.0003);
+                event.marble.squashTarget = 1 - impactSquash;
+                const pan = this.audio.getSpatialPan(event.marble.x, this.renderer.camera.x, this.canvas.width / this.renderer.camera.zoom);
+                this.audio.playBounce(event.force, pan);
+                if (event.force > 500) {
+                    this.renderer.camera.shake(event.force * 0.005);
+                }
+            }
+        }
+
+        const activeMarbles = this.engine.marbles.filter(m => m.alive && !m.finished);
+        if (activeMarbles.length === 0 && this.raceState === 'racing') {
+            this.raceState = 'finished';
+            this.replay.stopRecording();
+            this.updateRankingsUI();
+        }
+
+        const maxSpeed = Math.max(...this.engine.marbles.filter(m => m.alive).map(m => m.getSpeed()), 0);
+        this.audio.updateMusicIntensity(maxSpeed / 600);
+
+        this.replay.captureFrame(this.engine.marbles, this.engine.time);
+        this.renderer.camera.update(dt, this.engine.marbles);
+    }
+
+    applyReplayFrame(frame) {
+        for (const mData of frame.marbles) {
+            const marble = this.engine.marbles.find(m => m.id === mData.id);
+            if (marble) {
+                marble.x = mData.x;
+                marble.y = mData.y;
+                marble.angle = mData.angle;
+                marble.alive = mData.alive;
+                marble.finished = mData.finished;
+                marble.squash = mData.squash;
+                marble.updateTrail();
+            }
+        }
+    }
+
+    render(dt) {
+        this.renderer.render(this.engine, dt);
+        this.renderUI();
+    }
+
+    renderUI() {
+        const ctx = this.ctx;
+        const w = this.canvas.width / (Math.min(window.devicePixelRatio || 1, 2));
+        const h = this.canvas.height / (Math.min(window.devicePixelRatio || 1, 2));
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        ctx.scale(dpr, dpr);
+
+        if (this.raceState === 'countdown' && this.countdownTimer > 0) {
+            const num = Math.ceil(this.countdownTimer);
+            const scale = 1 + (1 - (this.countdownTimer % 1)) * 0.3;
+            ctx.save();
+            ctx.translate(w / 2, h / 2);
+            ctx.scale(scale, scale);
+            ctx.font = 'bold 120px system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = '#6366f1';
+            ctx.shadowBlur = 30;
+            ctx.fillText(num > 0 ? String(num) : 'GO!', 0, 0);
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+
+        if (this.raceState === 'racing' || this.raceState === 'finished') {
+            ctx.font = 'bold 16px system-ui, sans-serif';
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'left';
+            const mins = Math.floor(this.raceTimer / 60);
+            const secs = (this.raceTimer % 60).toFixed(1);
+            ctx.fillText(`⏱ ${mins}:${secs.padStart(4, '0')}`, 10, 30);
+        }
+
+        if (this.raceState === 'finished') {
+            ctx.save();
+            ctx.font = 'bold 48px system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#fff';
+            ctx.shadowColor = '#ec4899';
+            ctx.shadowBlur = 20;
+            ctx.fillText('RACE COMPLETE!', w / 2, 80);
+            ctx.shadowBlur = 0;
+
+            if (this.rankings.length > 0) {
+                ctx.font = 'bold 24px system-ui, sans-serif';
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText(`🏆 ${this.rankings[0].name} WINS!`, w / 2, 120);
+            }
+            ctx.restore();
+        }
+
+        if (this.raceState === 'replay') {
+            ctx.font = 'bold 20px system-ui, sans-serif';
+            ctx.fillStyle = '#ff4466';
+            ctx.textAlign = 'center';
+            ctx.fillText(`⏪ REPLAY (${Math.round(this.replay.getProgress() * 100)}%)`, w / 2, 30);
+        }
+
+        if (this.showLeaderboard) {
+            this.renderLeaderboard(ctx, w, h);
+        }
+
+        if (this.showFPS) {
+            ctx.font = '12px monospace';
+            ctx.fillStyle = this.perf.getFPS() < 30 ? '#ff4444' : '#44ff44';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${this.perf.getFPS()} FPS | ${this.perf.qualityLevel.toUpperCase()}`, w - 10, 20);
+        }
+
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    renderLeaderboard(ctx, w, h) {
+        const marbles = [...this.engine.marbles]
+            .filter(m => m.alive || m.finished)
+            .sort((a, b) => {
+                if (a.finished && b.finished) return a.rank - b.rank;
+                if (a.finished) return -1;
+                if (b.finished) return 1;
+                return b.y - a.y;
+            });
+
+        const lbWidth = 180;
+        const lbX = w - lbWidth - 10;
+        const lbY = 40;
+        const rowH = 24;
+        const maxShow = Math.min(marbles.length, 10);
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.beginPath();
+        ctx.roundRect(lbX, lbY, lbWidth, 30 + maxShow * rowH, 10);
+        ctx.fill();
+
+        ctx.font = 'bold 14px system-ui, sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        ctx.fillText('LEADERBOARD', lbX + 10, lbY + 20);
+
+        ctx.font = '13px system-ui, sans-serif';
+        for (let i = 0; i < maxShow; i++) {
+            const m = marbles[i];
+            const y = lbY + 35 + i * rowH;
+            const rank = m.finished ? `#${m.rank}` : `${i + 1}.`;
+            ctx.fillStyle = m.color;
+            ctx.beginPath();
+            ctx.arc(lbX + 16, y - 3, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = m.finished ? '#ffd700' : '#ccc';
+            ctx.fillText(`${rank} ${m.name}`, lbX + 26, y);
+            if (m.finished) {
+                ctx.fillStyle = '#888';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${m.finishTime.toFixed(1)}s`, lbX + lbWidth - 10, y);
+                ctx.textAlign = 'left';
+            }
+        }
+    }
+
+    updateRankingsUI() {
+        const el = document.getElementById('rankingsList');
+        if (!el) return;
+        el.innerHTML = '';
+        for (const m of this.rankings) {
+            const div = document.createElement('div');
+            div.className = 'ranking-item';
+            div.innerHTML = `<span class="rank">#${m.rank}</span>
+                <span class="marble-dot" style="background:${m.color}"></span>
+                <span class="name">${m.name}</span>
+                <span class="time">${m.finishTime.toFixed(2)}s</span>`;
+            el.appendChild(div);
+        }
+    }
 }
 
-function stopTimer() {
-  state.running = false;
-  startPauseBtn.textContent = "Başlat";
-  if (state.intervalId !== null) {
-    clearInterval(state.intervalId);
-    state.intervalId = null;
-  }
-  updateUI();
-}
-
-function resetCurrentPhase() {
-  initializeCurrentMode();
-  updateUI();
-}
-
-function skipPhase() {
-  onPhaseFinished(true);
-  updateUI();
-}
-
-function onPhaseFinished(skipNotification = false) {
-  const wasMusicPlaying = !ambientPlayer.paused;
-  stopTimer();
-
-  if (state.mode === "focus") {
-    state.completedFocusSessions += 1;
-    const useLongBreak = state.completedFocusSessions % state.settings.longBreakEvery === 0;
-    state.mode = useLongBreak ? "longBreak" : "shortBreak";
-  } else {
-    state.mode = "focus";
-  }
-
-  syncVisualWithMode();
-  syncTrackWithMode(wasMusicPlaying);
-  state.phaseDurationSeconds = getModeDurationSeconds(state.mode);
-  state.remainingSeconds = state.phaseDurationSeconds;
-
-  if (!skipNotification) {
-    notifyPhaseSwitch();
-    vibratePhone();
-    beep();
-  }
-}
-
-function syncVisualWithMode() {
-  if (state.mode === "focus") {
-    setVisual(0);
-  } else if (state.mode === "shortBreak") {
-    setVisual(1);
-  } else {
-    setVisual(2);
-  }
-}
-
-function syncTrackWithMode(keepPlaying) {
-  if (state.mode === "focus") {
-    selectTrack("gymnopedie", keepPlaying);
-  } else if (state.mode === "shortBreak") {
-    selectTrack("waves", keepPlaying);
-  } else {
-    selectTrack("campfire", keepPlaying);
-  }
-}
-
-function updateUI() {
-  timerDisplay.textContent = formatSeconds(state.remainingSeconds);
-  sessionCount.textContent = `Tamamlanan odak: ${state.completedFocusSessions}`;
-  document.body.classList.toggle("is-running", state.running);
-
-  if (state.mode === "focus") {
-    modeLabel.textContent = "Odak";
-    modeLabel.classList.remove("mode-badge--break");
-    modeLabel.classList.add("mode-badge--focus");
-    document.title = `${timerDisplay.textContent} · Odak`;
-  } else if (state.mode === "shortBreak") {
-    modeLabel.textContent = "Kısa mola";
-    modeLabel.classList.remove("mode-badge--focus");
-    modeLabel.classList.add("mode-badge--break");
-    document.title = `${timerDisplay.textContent} · Kısa mola`;
-  } else {
-    modeLabel.textContent = "Uzun mola";
-    modeLabel.classList.remove("mode-badge--focus");
-    modeLabel.classList.add("mode-badge--break");
-    document.title = `${timerDisplay.textContent} · Uzun mola`;
-  }
-
-  const completed = state.phaseDurationSeconds - state.remainingSeconds;
-  const progress = (completed / state.phaseDurationSeconds) * 100;
-  progressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
-}
-
-function setVisual(index) {
-  const normalized = (index + VISUALS.length) % VISUALS.length;
-  state.visualIndex = normalized;
-  const visual = VISUALS[normalized];
-  document.body.style.setProperty("--bg-image-url", `url("${visual.src}")`);
-
-  // Bazı WebView sürümlerinde ani src değişiminde görsel boş kalabildiği için preload sonrası atanır.
-  const image = new Image();
-  image.onload = () => {
-    bgImage.src = visual.src;
-  };
-  image.src = visual.src;
-
-  galleryCaption.textContent = `Arka plan görseli: ${visual.title} · ${visual.credit}`;
-  saveMediaPreferences();
-}
-
-function goToNextVisual() {
-  setVisual(state.visualIndex + 1);
-}
-
-function goToPrevVisual() {
-  setVisual(state.visualIndex - 1);
-}
-
-function populateTrackSelect() {
-  TRACKS.forEach((track) => {
-    const option = document.createElement("option");
-    option.value = track.id;
-    option.textContent = track.title;
-    musicSelect.append(option);
-  });
-}
-
-function selectTrack(trackId, autoplayIfPlaying = false) {
-  const track = TRACKS.find((item) => item.id === trackId);
-  if (!track) {
-    return;
-  }
-  const keepPlaying = autoplayIfPlaying && !ambientPlayer.paused;
-  state.selectedTrackId = track.id;
-  musicSelect.value = track.id;
-  ambientPlayer.src = track.src;
-  ambientPlayer.volume = state.volume;
-  ambientPlayer.muted = state.isMuted;
-  trackMeta.textContent = `${track.title} · ${track.credit}`;
-  saveMediaPreferences();
-
-  if (keepPlaying) {
-    ambientPlayer.play().catch(() => {});
-  }
-}
-
-function toggleMusic() {
-  if (ambientPlayer.paused) {
-    ambientPlayer.play().then(updateMusicButtons).catch(() => {});
-  } else {
-    ambientPlayer.pause();
-    updateMusicButtons();
-  }
-}
-
-function toggleMute() {
-  state.isMuted = !state.isMuted;
-  ambientPlayer.muted = state.isMuted;
-  saveMediaPreferences();
-  updateMusicButtons();
-}
-
-function updateVolume() {
-  state.volume = clamp(Number(volumeInput.value), 0, 100, DEFAULT_VOLUME * 100) / 100;
-  ambientPlayer.volume = state.volume;
-  saveMediaPreferences();
-}
-
-function updateMusicButtons() {
-  musicToggleBtn.textContent = ambientPlayer.paused ? "Müziği başlat" : "Müziği durdur";
-  musicMuteBtn.textContent = state.isMuted ? "Sesi aç" : "Sessize al";
-}
-
-function formatSeconds(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function notifyPhaseSwitch() {
-  if (!("Notification" in window)) {
-    return;
-  }
-
-  if (Notification.permission === "default") {
-    Notification.requestPermission().catch(() => {});
-    return;
-  }
-
-  if (Notification.permission === "granted") {
-    const body = state.mode === "focus" ? "Odak seansı başladı." : "Mola zamanı başladı.";
-    new Notification("Pomodoro", { body });
-  }
-}
-
-function vibratePhone() {
-  if ("vibrate" in navigator) {
-    navigator.vibrate([200, 100, 250]);
-  }
-}
-
-function beep() {
-  try {
-    const ctx = new AudioContext();
-    const oscillator = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    oscillator.type = "triangle";
-    oscillator.frequency.value = 880;
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-
-    oscillator.connect(gain);
-    gain.connect(ctx.destination);
-
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + 0.35);
-  } catch (_) {
-    // Sessizce geç: bazı tarayıcılarda ses kilidi olabilir.
-  }
-}
-
-startPauseBtn.addEventListener("click", toggleStartPause);
-resetBtn.addEventListener("click", resetCurrentPhase);
-skipBtn.addEventListener("click", skipPhase);
-saveSettingsBtn.addEventListener("click", saveSettings);
-prevVisualBtn.addEventListener("click", goToPrevVisual);
-nextVisualBtn.addEventListener("click", goToNextVisual);
-musicToggleBtn.addEventListener("click", toggleMusic);
-musicMuteBtn.addEventListener("click", toggleMute);
-volumeInput.addEventListener("input", updateVolume);
-themeAutoBtn.addEventListener("click", () => setThemePreference("system"));
-themeLightBtn.addEventListener("click", () => setThemePreference("light"));
-themeDarkBtn.addEventListener("click", () => setThemePreference("dark"));
-musicSelect.addEventListener("change", (event) => selectTrack(event.target.value, true));
-ambientPlayer.addEventListener("play", updateMusicButtons);
-ambientPlayer.addEventListener("pause", updateMusicButtons);
-systemThemeMedia.addEventListener("change", () => {
-  if (state.themePreference === "system") {
-    applyTheme();
-  }
-});
-
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) {
-    updateUI();
-  }
-});
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  });
-}
-
-loadSettings();
-loadMediaPreferences();
-loadThemePreference();
-populateTrackSelect();
-fillInputs();
-applyTheme();
-initializeCurrentMode();
-setVisual(state.visualIndex);
-selectTrack(state.selectedTrackId);
-updateMusicButtons();
-updateUI();
+const app = new MarbleRaceApp();
+document.addEventListener('DOMContentLoaded', () => app.init());
+if (document.readyState !== 'loading') app.init();

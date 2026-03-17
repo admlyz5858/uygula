@@ -1,27 +1,14 @@
 {
-  "name": "workspace",
-  "version": "1.0.0",
-  "description": "Mobil cihazlara uygun, kurulum yapılabilen (PWA) basit bir Pomodoro uygulaması.",
-  "main": "app.js",
-  "scripts": {
-    "build:web": "rm -rf dist && mkdir -p dist && cp index.html styles.css app.js manifest.webmanifest icon.svg sw.js dist/ && cp -r assets dist/",
-    "sync:android": "npm run build:web && npx cap sync android",
-    "build:apk": "npm run sync:android && cd android && ./gradlew assembleDebug"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/admlyz5858/uygula.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/admlyz5858/uygula/issues"
-  },
-  "homepage": "https://github.com/admlyz5858/uygula#readme",
-  "dependencies": {
-    "@capacitor/android": "^8.2.0",
-    "@capacitor/cli": "^8.2.0",
-    "@capacitor/core": "^8.2.0"
-  }
+    "name": "marble-race-simulator",
+    "version": "1.0.0",
+    "description": "Ultra-realistic marble race physics simulator with procedural tracks, AI marbles, and cinematic visuals",
+    "main": "app.js",
+    "type": "module",
+    "scripts": {
+        "start": "npx serve . -l 3000",
+        "build:web": "rm -rf dist && mkdir -p dist/src/physics dist/src/render dist/src/procedural dist/src/ai dist/src/mobile dist/src/audio dist/src/replay && cp index.html styles.css app.js manifest.webmanifest icon.svg sw.js dist/ && cp src/physics/*.js dist/src/physics/ && cp src/render/*.js dist/src/render/ && cp src/procedural/*.js dist/src/procedural/ && cp src/ai/*.js dist/src/ai/ && cp src/mobile/*.js dist/src/mobile/ && cp src/audio/*.js dist/src/audio/ && cp src/replay/*.js dist/src/replay/"
+    },
+    "keywords": ["marble", "race", "physics", "simulation", "game"],
+    "author": "",
+    "license": "ISC"
 }

@@ -1,19 +1,18 @@
 {
-  "name": "Mobil Focus Pomodoro",
-  "short_name": "Pomodoro",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#4f46e5",
-  "lang": "tr",
-  "orientation": "portrait",
-  "description": "Mobil uyumlu odak ve mola zamanlayıcısı.",
-  "icons": [
-    {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ]
+    "name": "Marble Race Simulator",
+    "short_name": "Marble Race",
+    "description": "Ultra-realistic marble race physics simulator with procedural tracks and AI marbles",
+    "start_url": "/",
+    "display": "fullscreen",
+    "orientation": "any",
+    "background_color": "#0a0a1a",
+    "theme_color": "#0a0a1a",
+    "icons": [
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ],
+    "categories": ["games", "entertainment"]
 }
