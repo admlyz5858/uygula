@@ -1,6 +1,7 @@
 const SETTINGS_STORAGE_KEY = "focus-pomodoro-settings-v1";
-const MEDIA_STORAGE_KEY = "focus-pomodoro-media-v1";
+const MEDIA_STORAGE_KEY = "focus-pomodoro-media-v2";
 const THEME_STORAGE_KEY = "focus-pomodoro-theme-v1";
+const DEFAULT_VOLUME = 0.75;
 
 const DEFAULT_SETTINGS = {
   focusMinutes: 25,
@@ -58,7 +59,7 @@ const state = {
   settings: { ...DEFAULT_SETTINGS },
   visualIndex: 0,
   selectedTrackId: TRACKS[0].id,
-  volume: 0.45,
+  volume: DEFAULT_VOLUME,
   isMuted: false,
   themePreference: "system",
 };
@@ -70,6 +71,7 @@ const progressBar = document.getElementById("progressBar");
 const bgImage = document.getElementById("bgImage");
 const galleryCaption = document.getElementById("galleryCaption");
 const themeColorMeta = document.getElementById("themeColorMeta");
+const themeStatus = document.getElementById("themeStatus");
 
 const startPauseBtn = document.getElementById("startPauseBtn");
 const resetBtn = document.getElementById("resetBtn");
@@ -124,7 +126,7 @@ function loadMediaPreferences() {
     state.selectedTrackId = TRACKS.some((track) => track.id === parsed.selectedTrackId)
       ? parsed.selectedTrackId
       : TRACKS[0].id;
-    state.volume = clamp(Number(parsed.volume * 100), 0, 100, 45) / 100;
+    state.volume = clamp(Number(parsed.volume * 100), 0, 100, DEFAULT_VOLUME * 100) / 100;
     state.isMuted = Boolean(parsed.isMuted);
   } catch (_) {
     // Varsayılan ayarlar ile devam et.
@@ -214,6 +216,16 @@ function updateThemeButtons() {
   themeAutoBtn.classList.toggle("is-active", state.themePreference === "system");
   themeLightBtn.classList.toggle("is-active", state.themePreference === "light");
   themeDarkBtn.classList.toggle("is-active", state.themePreference === "dark");
+  const resolvedTheme = getResolvedTheme();
+  const prefText =
+    state.themePreference === "system"
+      ? `Otomatik (${resolvedTheme === "dark" ? "Koyu" : "Açık"})`
+      : state.themePreference === "dark"
+        ? "Koyu"
+        : "Açık";
+  if (themeStatus) {
+    themeStatus.textContent = `Tema: ${prefText}`;
+  }
 }
 
 function initializeCurrentMode() {
@@ -362,8 +374,16 @@ function setVisual(index) {
   const normalized = (index + VISUALS.length) % VISUALS.length;
   state.visualIndex = normalized;
   const visual = VISUALS[normalized];
-  bgImage.src = visual.src;
-  galleryCaption.textContent = `Arka plan: ${visual.title} · ${visual.credit}`;
+  document.body.style.setProperty("--bg-image-url", `url("${visual.src}")`);
+
+  // Bazı WebView sürümlerinde ani src değişiminde görsel boş kalabildiği için preload sonrası atanır.
+  const image = new Image();
+  image.onload = () => {
+    bgImage.src = visual.src;
+  };
+  image.src = visual.src;
+
+  galleryCaption.textContent = `Arka plan görseli: ${visual.title} · ${visual.credit}`;
   saveMediaPreferences();
 }
 
@@ -420,7 +440,7 @@ function toggleMute() {
 }
 
 function updateVolume() {
-  state.volume = clamp(Number(volumeInput.value), 0, 100, 45) / 100;
+  state.volume = clamp(Number(volumeInput.value), 0, 100, DEFAULT_VOLUME * 100) / 100;
   ambientPlayer.volume = state.volume;
   saveMediaPreferences();
 }

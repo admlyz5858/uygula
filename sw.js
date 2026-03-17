@@ -1,4 +1,4 @@
-const CACHE_NAME = "focus-pomodoro-v2";
+const CACHE_NAME = "focus-pomodoro-v3";
 const ASSETS = [
   "./",
   "./index.html",

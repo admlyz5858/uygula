@@ -4,14 +4,15 @@
   --primary-2: #a78bfa;
   --text: #f8fafc;
   --muted: #dbeafe;
-  --glass-a: rgba(9, 14, 30, 0.32);
-  --glass-b: rgba(16, 25, 45, 0.26);
+  --glass-a: rgba(9, 14, 30, 0.2);
+  --glass-b: rgba(16, 25, 45, 0.16);
   --border: rgba(191, 219, 254, 0.28);
-  --field-bg: rgba(15, 23, 42, 0.36);
+  --field-bg: rgba(15, 23, 42, 0.28);
   --field-border: rgba(203, 213, 225, 0.34);
-  --overlay-a: rgba(2, 6, 23, 0.55);
-  --overlay-b: rgba(15, 23, 42, 0.28);
+  --overlay-a: rgba(2, 6, 23, 0.42);
+  --overlay-b: rgba(15, 23, 42, 0.18);
   --shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+  --bg-image-url: url("assets/images/autumn.webp");
 }
 
 * {
@@ -35,27 +36,38 @@ body {
 body.theme-dark {
   --text: #f8fafc;
   --muted: #dbeafe;
-  --glass-a: rgba(9, 14, 30, 0.34);
-  --glass-b: rgba(16, 25, 45, 0.24);
+  --glass-a: rgba(9, 14, 30, 0.2);
+  --glass-b: rgba(16, 25, 45, 0.14);
   --border: rgba(191, 219, 254, 0.26);
-  --field-bg: rgba(15, 23, 42, 0.38);
+  --field-bg: rgba(15, 23, 42, 0.3);
   --field-border: rgba(203, 213, 225, 0.34);
-  --overlay-a: rgba(2, 6, 23, 0.58);
-  --overlay-b: rgba(15, 23, 42, 0.28);
+  --overlay-a: rgba(2, 6, 23, 0.45);
+  --overlay-b: rgba(15, 23, 42, 0.18);
   --shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
 }
 
 body.theme-light {
   --text: #0f172a;
   --muted: #334155;
-  --glass-a: rgba(255, 255, 255, 0.36);
-  --glass-b: rgba(241, 245, 249, 0.28);
+  --glass-a: rgba(255, 255, 255, 0.24);
+  --glass-b: rgba(241, 245, 249, 0.16);
   --border: rgba(51, 65, 85, 0.22);
-  --field-bg: rgba(255, 255, 255, 0.42);
+  --field-bg: rgba(255, 255, 255, 0.3);
   --field-border: rgba(71, 85, 105, 0.28);
-  --overlay-a: rgba(248, 250, 252, 0.34);
-  --overlay-b: rgba(226, 232, 240, 0.18);
+  --overlay-a: rgba(248, 250, 252, 0.18);
+  --overlay-b: rgba(226, 232, 240, 0.1);
   --shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  background-image: var(--bg-image-url);
+  background-size: cover;
+  background-position: center;
+  transform: scale(1.06);
 }
 
 .cinematic-bg {
@@ -70,7 +82,7 @@ body.theme-light {
   height: 100%;
   object-fit: cover;
   transform: scale(1.07);
-  filter: saturate(1.14) contrast(1.06);
+  filter: saturate(1.16) contrast(1.08);
   animation: kenburns 40s ease-in-out infinite alternate;
   transition: opacity 0.8s ease;
 }
@@ -155,13 +167,21 @@ body.theme-light {
   color: var(--muted);
 }
 
+.theme-status {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .theme-switch {
   display: flex;
   gap: 6px;
 }
 
 .theme-btn.is-active {
-  outline: 2px solid rgba(99, 102, 241, 0.78);
+  background: linear-gradient(120deg, var(--primary), var(--primary-2));
+  color: #fff;
+  outline: 2px solid rgba(99, 102, 241, 0.38);
   filter: brightness(1.08);
 }
 
