@@ -227,6 +227,75 @@ function colorToCSS(hex) {
 }
 
 // ============================================================
+// AUDIO SYSTEM
+// ============================================================
+class AudioSystem {
+    constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.initialized = false;
+    }
+
+    init() {
+        try {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.initialized = true;
+        } catch (e) {
+            this.initialized = false;
+        }
+    }
+
+    ensureContext() {
+        if (!this.initialized) this.init();
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    playTone(freq, duration, type = 'sine', volume = 0.15) {
+        if (!this.enabled || !this.ctx) return;
+        this.ensureContext();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    }
+
+    countdownBeep() {
+        this.playTone(440, 0.2, 'sine', 0.2);
+    }
+
+    startBeep() {
+        this.playTone(880, 0.4, 'sine', 0.25);
+        setTimeout(() => this.playTone(1760, 0.3, 'sine', 0.2), 200);
+    }
+
+    finishSound() {
+        [0, 100, 200, 300].forEach((delay, i) => {
+            setTimeout(() => this.playTone(523 + i * 130, 0.3, 'triangle', 0.15), delay);
+        });
+    }
+
+    jumpSound() {
+        this.playTone(300, 0.15, 'sine', 0.08);
+        setTimeout(() => this.playTone(500, 0.1, 'sine', 0.06), 50);
+    }
+
+    bounceSound() {
+        this.playTone(200, 0.2, 'sine', 0.1);
+        setTimeout(() => this.playTone(600, 0.15, 'sine', 0.08), 100);
+    }
+}
+
+const audio = new AudioSystem();
+
+// ============================================================
 // STICKMAN MODEL BUILDER
 // ============================================================
 class StickmanModel {
@@ -536,7 +605,7 @@ class Racer {
         // Check for obstacles
         for (const obs of obstacles) {
             if (!obs.passed || !obs.passed.has(this)) {
-                if (this.progress >= obs.zStart && this.progress < obs.zStart + 0.5) {
+                if (this.progress >= obs.zStart - 0.2 && this.progress < obs.zEnd) {
                     if (!obs.passed) obs.passed = new Set();
                     obs.passed.add(this);
                     this.startObstacle(obs);
@@ -1312,11 +1381,21 @@ class ParkourGame {
         });
         toRemove.forEach(c => this.scene.remove(c));
 
-        // Sky
-        const skyColor1 = new THREE.Color(theme.sky1);
-        const skyColor2 = new THREE.Color(theme.sky2);
-        this.scene.background = skyColor2;
-        this.scene.fog = new THREE.Fog(theme.fog, 50, 200);
+        // Gradient sky dome
+        const skyCanvas = document.createElement('canvas');
+        skyCanvas.width = 2;
+        skyCanvas.height = 256;
+        const skyCtx = skyCanvas.getContext('2d');
+        const grad = skyCtx.createLinearGradient(0, 0, 0, 256);
+        grad.addColorStop(0, theme.sky1);
+        grad.addColorStop(0.5, theme.sky2);
+        grad.addColorStop(1, theme.sky2);
+        skyCtx.fillStyle = grad;
+        skyCtx.fillRect(0, 0, 2, 256);
+        const skyTex = new THREE.CanvasTexture(skyCanvas);
+        skyTex.mapping = THREE.EquirectangularReflectionMapping;
+        this.scene.background = skyTex;
+        this.scene.fog = new THREE.Fog(new THREE.Color(theme.fog), 60, 250);
 
         // Ambient light
         const ambient = new THREE.AmbientLight(theme.ambient, 0.6);
@@ -1360,6 +1439,9 @@ class ParkourGame {
 
     // ---- UI MANAGEMENT ----
     setupUI() {
+        // Init audio on first interaction
+        document.addEventListener('click', () => audio.ensureContext(), { once: true });
+
         // Menu buttons
         document.getElementById('btn-quick-race').addEventListener('click', () => {
             this.showScreen('setup');
@@ -1494,6 +1576,7 @@ class ParkourGame {
     applySettings() {
         this.cameraMode = document.getElementById('camera-mode').value;
         this.raceSpeed = parseFloat(document.getElementById('race-speed').value);
+        audio.enabled = document.getElementById('sound-toggle').checked;
         if (this.cameraCtrl) {
             this.cameraCtrl.setMode(this.cameraMode);
         }
@@ -1773,12 +1856,21 @@ class ParkourGame {
             const countdownText = document.getElementById('countdown-text');
             const overlay = document.getElementById('countdown-overlay');
 
+            const currentNum = Math.ceil(this.countdownTime - 1);
             if (this.countdownTime > 1) {
-                countdownText.textContent = Math.ceil(this.countdownTime - 1);
+                if (this._lastCountdownNum !== currentNum) {
+                    this._lastCountdownNum = currentNum;
+                    audio.countdownBeep();
+                }
+                countdownText.textContent = currentNum;
                 countdownText.style.animation = 'none';
-                countdownText.offsetHeight; // reflow
+                countdownText.offsetHeight;
                 countdownText.style.animation = 'countdownPop 0.5s ease-out';
             } else if (this.countdownTime > 0) {
+                if (this._lastCountdownNum !== 0) {
+                    this._lastCountdownNum = 0;
+                    audio.startBeep();
+                }
                 countdownText.textContent = 'BAŞLA!';
                 countdownText.style.color = 'var(--success)';
                 countdownText.style.fontSize = '6rem';
@@ -1788,6 +1880,7 @@ class ParkourGame {
                 countdownText.style.fontSize = '12rem';
                 this.state = 'racing';
                 this.racers.forEach(r => r.startRunning());
+                this._lastCountdownNum = -1;
             }
 
             this.cameraCtrl.update(dt, this.racers, this.courseLength);
@@ -1801,9 +1894,22 @@ class ParkourGame {
             const time = this.clock.elapsedTime;
 
             // Update racers
+            this._dustTimer = (this._dustTimer || 0) + scaledDt;
             this.racers.forEach(r => {
                 r.update(scaledDt, time, this.obstacles, this.courseLength, this.raceTime);
             });
+
+            // Periodic dust particles from running racers
+            if (this._dustTimer > 0.3) {
+                this._dustTimer = 0;
+                this.racers.forEach(r => {
+                    if (r.state === 'running' && !r.finished && Math.random() > 0.5) {
+                        const pos = r.model.group.position.clone();
+                        pos.y = 0.1;
+                        this.particles.emit(pos, 0xccaa88, 2);
+                    }
+                });
+            }
 
             // Assign positions
             const sorted = [...this.racers].sort((a, b) => b.progress - a.progress);
@@ -1822,8 +1928,8 @@ class ParkourGame {
                     r._celebrationStarted = true;
                     this.particles.emit(r.model.group.position.clone().add(new THREE.Vector3(0, 2, 0)), r.baseColor, 25);
 
-                    // Show finish banner for first place
                     if (r.position === 0 && !document.querySelector('.finish-banner')) {
+                        audio.finishSound();
                         const banner = document.createElement('div');
                         banner.className = 'finish-banner';
                         banner.textContent = `🏆 ${r.name} 🏆`;
