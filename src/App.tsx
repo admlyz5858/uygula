@@ -240,6 +240,42 @@ const BREAK_QUOTES = [
 ];
 
 const BUILD_LABEL = "Build 1.3.0";
+const INPUT_LIMITS = {
+  focusMinutes: { min: 10, max: 90 },
+  shortBreakMinutes: { min: 3, max: 30 },
+  longBreakMinutes: { min: 10, max: 60 },
+  longBreakEvery: { min: 2, max: 8 },
+} as const;
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
+}
+
+function clampPercent(value: number): number {
+  return clampNumber(value, 0, 100);
+}
+
+function sanitizeSettings(input: typeof SETTINGS_DEFAULT): typeof SETTINGS_DEFAULT {
+  return {
+    focusMinutes: clampNumber(Math.round(input.focusMinutes), INPUT_LIMITS.focusMinutes.min, INPUT_LIMITS.focusMinutes.max),
+    shortBreakMinutes: clampNumber(
+      Math.round(input.shortBreakMinutes),
+      INPUT_LIMITS.shortBreakMinutes.min,
+      INPUT_LIMITS.shortBreakMinutes.max,
+    ),
+    longBreakMinutes: clampNumber(
+      Math.round(input.longBreakMinutes),
+      INPUT_LIMITS.longBreakMinutes.min,
+      INPUT_LIMITS.longBreakMinutes.max,
+    ),
+    longBreakEvery: clampNumber(Math.round(input.longBreakEvery), INPUT_LIMITS.longBreakEvery.min, INPUT_LIMITS.longBreakEvery.max),
+  };
+}
+
+function getWeeklyBarHeight(sessions: number): number {
+  return clampNumber(Math.round(sessions * 18), 6, 144);
+}
 
 function formatClock(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
@@ -408,7 +444,7 @@ function App() {
           loadAmbientVolume(),
           loadSelectedBackgroundId(),
         ]);
-      setSettings(loadedSettings);
+      setSettings(sanitizeSettings(loadedSettings));
       setProgress({ ...loadedProgress, level: levelFromXp(loadedProgress.xp) });
       setThemeMode(loadedTheme);
       setAmbientVolume(loadedVolume);
@@ -887,13 +923,15 @@ function App() {
     setThemeMode(nextTheme);
   }
 
+  function handleSettingInput<K extends keyof typeof SETTINGS_DEFAULT>(key: K, value: string) {
+    const parsed = Number(value);
+    const limits = INPUT_LIMITS[key];
+    const safe = clampNumber(Math.round(parsed), limits.min, limits.max);
+    setSettings((prev) => ({ ...prev, [key]: Number.isFinite(parsed) ? safe : prev[key] }));
+  }
+
   async function handleSettingsSave() {
-    const sanitized = {
-      focusMinutes: Math.max(10, Math.min(90, settings.focusMinutes)),
-      shortBreakMinutes: Math.max(3, Math.min(30, settings.shortBreakMinutes)),
-      longBreakMinutes: Math.max(10, Math.min(60, settings.longBreakMinutes)),
-      longBreakEvery: Math.max(2, Math.min(8, settings.longBreakEvery)),
-    };
+    const sanitized = sanitizeSettings(settings);
     setSettings(sanitized);
     const nextDuration = getDurationByMode(mode, sanitized);
     setPhaseDuration(nextDuration);
@@ -909,7 +947,7 @@ function App() {
     );
   }
 
-  const progressPercent = ((phaseDuration - remainingSeconds) / phaseDuration) * 100;
+  const progressPercent = clampPercent(((phaseDuration - remainingSeconds) / phaseDuration) * 100);
   const questDailyThree = todayRecord.sessions >= 3;
   const questFocus60 = todayRecord.focusMinutes >= 60;
   const questWeekly = weeklySessions >= 20;
@@ -995,7 +1033,7 @@ function App() {
               </div>
               <p className="relative text-[5rem] font-black tracking-widest md:text-[7rem]">{formatClock(remainingSeconds)}</p>
               <p className="relative mt-1 text-sm text-slate-200">{quote}</p>
-              <div className="relative mt-6 h-2 rounded-full bg-white/20">
+              <div className="relative mt-6 h-2 overflow-hidden rounded-full bg-white/20">
                 <div className="h-2 rounded-full bg-gradient-to-r from-cyan-300 via-violet-400 to-emerald-300 transition-all duration-200" style={{ width: `${progressPercent}%` }} />
               </div>
             </motion.div>
@@ -1036,11 +1074,11 @@ function App() {
             </div>
             <p className="text-4xl">{plant === "seed" ? "🌰" : plant === "sprout" ? "🌱" : plant === "tree" ? "🌳" : plant === "withered" ? "🥀" : "🌌🌳"}</p>
             <p className="text-sm capitalize">Plant stage: {plant}</p>
-            <p className="text-sm">Health: {progress.plantHealth}%</p>
+            <p className="text-sm">Health: {Math.round(clampPercent(progress.plantHealth))}%</p>
             <p className="text-sm">XP: {progress.xp} · Level: {progress.level}</p>
             <p className="text-sm">Completed sessions: {progress.completedSessions}</p>
-            <div className="h-2 rounded-full bg-white/20">
-              <div className="h-2 rounded-full bg-emerald-300" style={{ width: `${progress.plantHealth}%` }} />
+            <div className="h-2 overflow-hidden rounded-full bg-white/20">
+              <div className="h-2 rounded-full bg-emerald-300" style={{ width: `${clampPercent(progress.plantHealth)}%` }} />
             </div>
 
             <div className="rounded-xl border border-white/15 bg-slate-950/30 p-3">
@@ -1069,7 +1107,9 @@ function App() {
               onChange={(e) => setGoalInput(e.target.value)}
               className="h-24 w-full rounded-xl border border-white/20 bg-slate-950/30 p-3 text-sm outline-none"
               placeholder="Study physics 3 hours"
+              maxLength={180}
             />
+            <p className="mt-1 text-right text-[11px] text-slate-300">{goalInput.length}/180</p>
             <div className="mt-2 flex gap-2">
               <button onClick={savePlanner} className="rounded-xl bg-violet-500 px-4 py-2 font-semibold">
                 Generate AI Plan
@@ -1237,10 +1277,10 @@ function App() {
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <div className="rounded-xl border border-white/15 bg-slate-950/30 p-3">
               <p className="mb-2 text-sm font-semibold">Last 7 days sessions</p>
-              <div className="flex h-36 items-end gap-2">
+              <div className="flex h-36 items-end gap-2 overflow-hidden">
                 {weekRecords.map((item) => (
                   <div key={item.date} className="flex flex-1 flex-col items-center gap-1">
-                    <div className="w-full rounded-t bg-gradient-to-t from-violet-500 to-cyan-300" style={{ height: `${Math.max(6, item.sessions * 18)}px` }} />
+                    <div className="w-full rounded-t bg-gradient-to-t from-violet-500 to-cyan-300" style={{ height: `${getWeeklyBarHeight(item.sessions)}px` }} />
                     <span className="text-[10px] text-slate-300">{item.date.slice(5)}</span>
                   </div>
                 ))}
@@ -1281,7 +1321,11 @@ function App() {
                 type="number"
                 className="mt-1 w-full rounded-lg border border-white/20 bg-slate-950/30 p-2"
                 value={settings.focusMinutes}
-                onChange={(e) => setSettings((prev) => ({ ...prev, focusMinutes: Number(e.target.value) }))}
+                min={INPUT_LIMITS.focusMinutes.min}
+                max={INPUT_LIMITS.focusMinutes.max}
+                step={1}
+                inputMode="numeric"
+                onChange={(e) => handleSettingInput("focusMinutes", e.target.value)}
               />
             </label>
             <label className="text-sm">
@@ -1290,7 +1334,11 @@ function App() {
                 type="number"
                 className="mt-1 w-full rounded-lg border border-white/20 bg-slate-950/30 p-2"
                 value={settings.shortBreakMinutes}
-                onChange={(e) => setSettings((prev) => ({ ...prev, shortBreakMinutes: Number(e.target.value) }))}
+                min={INPUT_LIMITS.shortBreakMinutes.min}
+                max={INPUT_LIMITS.shortBreakMinutes.max}
+                step={1}
+                inputMode="numeric"
+                onChange={(e) => handleSettingInput("shortBreakMinutes", e.target.value)}
               />
             </label>
             <label className="text-sm">
@@ -1299,7 +1347,11 @@ function App() {
                 type="number"
                 className="mt-1 w-full rounded-lg border border-white/20 bg-slate-950/30 p-2"
                 value={settings.longBreakMinutes}
-                onChange={(e) => setSettings((prev) => ({ ...prev, longBreakMinutes: Number(e.target.value) }))}
+                min={INPUT_LIMITS.longBreakMinutes.min}
+                max={INPUT_LIMITS.longBreakMinutes.max}
+                step={1}
+                inputMode="numeric"
+                onChange={(e) => handleSettingInput("longBreakMinutes", e.target.value)}
               />
             </label>
             <label className="text-sm">
@@ -1308,7 +1360,11 @@ function App() {
                 type="number"
                 className="mt-1 w-full rounded-lg border border-white/20 bg-slate-950/30 p-2"
                 value={settings.longBreakEvery}
-                onChange={(e) => setSettings((prev) => ({ ...prev, longBreakEvery: Number(e.target.value) }))}
+                min={INPUT_LIMITS.longBreakEvery.min}
+                max={INPUT_LIMITS.longBreakEvery.max}
+                step={1}
+                inputMode="numeric"
+                onChange={(e) => handleSettingInput("longBreakEvery", e.target.value)}
               />
             </label>
           </div>
