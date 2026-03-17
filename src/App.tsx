@@ -127,6 +127,33 @@ const TRACKS: (AudioTrack & { unlockLevel: number; gain: number })[] = [
     gain: 0.86,
   },
   {
+    id: "rain_deep_focus",
+    name: "Rain Deep Focus",
+    mode: "focus",
+    url: "/assets/music/waves-deep.ogg",
+    category: "ambient",
+    unlockLevel: 2,
+    gain: 0.82,
+  },
+  {
+    id: "forest_night_focus",
+    name: "Forest Night Focus",
+    mode: "focus",
+    url: "/assets/music/forest-night.ogg",
+    category: "ambient",
+    unlockLevel: 3,
+    gain: 0.84,
+  },
+  {
+    id: "piano_dream_focus",
+    name: "Piano Dream Focus",
+    mode: "focus",
+    url: "/assets/music/piano-dream.ogg",
+    category: "instrumental",
+    unlockLevel: 4,
+    gain: 0.76,
+  },
+  {
     id: "piano_break",
     name: "Soft Piano Break",
     mode: "shortBreak",
@@ -145,6 +172,33 @@ const TRACKS: (AudioTrack & { unlockLevel: number; gain: number })[] = [
     gain: 0.78,
   },
   {
+    id: "waves_soft_break",
+    name: "Waves Soft Break",
+    mode: "shortBreak",
+    url: "/assets/music/waves-soft.ogg",
+    category: "uplift",
+    unlockLevel: 2,
+    gain: 0.8,
+  },
+  {
+    id: "piano_bright_break",
+    name: "Piano Bright Break",
+    mode: "shortBreak",
+    url: "/assets/music/piano-bright.ogg",
+    category: "uplift",
+    unlockLevel: 3,
+    gain: 0.78,
+  },
+  {
+    id: "campfire_chill_break",
+    name: "Campfire Chill Break",
+    mode: "shortBreak",
+    url: "/assets/music/campfire-chill.ogg",
+    category: "uplift",
+    unlockLevel: 4,
+    gain: 0.84,
+  },
+  {
     id: "long_break_breath",
     name: "Long Break Breath",
     mode: "longBreak",
@@ -152,6 +206,24 @@ const TRACKS: (AudioTrack & { unlockLevel: number; gain: number })[] = [
     category: "uplift",
     unlockLevel: 1,
     gain: 0.83,
+  },
+  {
+    id: "long_break_waves",
+    name: "Long Break Waves",
+    mode: "longBreak",
+    url: "/assets/music/waves-soft.ogg",
+    category: "uplift",
+    unlockLevel: 2,
+    gain: 0.8,
+  },
+  {
+    id: "long_break_piano",
+    name: "Long Break Piano",
+    mode: "longBreak",
+    url: "/assets/music/piano-bright.ogg",
+    category: "uplift",
+    unlockLevel: 3,
+    gain: 0.76,
   },
 ];
 
@@ -291,6 +363,24 @@ function App() {
     [progress.level],
   );
 
+  useEffect(() => {
+    if (focusTracks.length > 0 && !focusTracks.some((track) => track.id === focusTrackId)) {
+      setFocusTrackId(focusTracks[0].id);
+    }
+  }, [focusTracks, focusTrackId]);
+
+  useEffect(() => {
+    if (breakTracks.length > 0 && !breakTracks.some((track) => track.id === breakTrackId)) {
+      setBreakTrackId(breakTracks[0].id);
+    }
+  }, [breakTracks, breakTrackId]);
+
+  useEffect(() => {
+    if (longBreakTracks.length > 0 && !longBreakTracks.some((track) => track.id === breakLongTrackId)) {
+      setBreakLongTrackId(longBreakTracks[0].id);
+    }
+  }, [longBreakTracks, breakLongTrackId]);
+
   const today = format(new Date(), "yyyy-MM-dd");
   const todayRecord = progress.records.find((r) => r.date === today) ?? {
     date: today,
@@ -373,19 +463,19 @@ function App() {
   }, [running]);
 
   useEffect(() => {
-    if (!running) {
-      if (bgRotateRef.current) window.clearInterval(bgRotateRef.current);
-      bgRotateRef.current = null;
-      return;
-    }
+    if (bgRotateRef.current) window.clearInterval(bgRotateRef.current);
+    bgRotateRef.current = null;
+    if (unlockedBackgrounds.length < 2) return;
+
+    const intervalMs = running ? 1000 * 60 * 5 : 1000 * 90;
     bgRotateRef.current = window.setInterval(() => {
       void rotateBackground();
-    }, 1000 * 60 * 5);
+    }, intervalMs);
     return () => {
       if (bgRotateRef.current) window.clearInterval(bgRotateRef.current);
       bgRotateRef.current = null;
     };
-  }, [running, mode, unlockedBackgrounds]);
+  }, [running, mode, unlockedBackgrounds.length, currentBackground.id]);
 
   useEffect(() => {
     if (!(mode !== "focus" && running)) {
@@ -433,8 +523,9 @@ function App() {
     const pool = unlockedBackgrounds.filter((bg) => bg.mood === (mode === "focus" ? "focus" : "break"));
     const source = pool.length > 0 ? pool : unlockedBackgrounds;
     if (!source.length) return;
-    const next = source[Math.floor(Math.random() * source.length)];
-    if (next.id === currentBackground.id) return;
+    const candidates = source.filter((bg) => bg.id !== currentBackground.id);
+    const pickFrom = candidates.length > 0 ? candidates : source;
+    const next = pickFrom[Math.floor(Math.random() * pickFrom.length)];
     await applyBackground(next);
   }
 
@@ -1018,7 +1109,9 @@ function App() {
                 </button>
               ))}
             </div>
-            <p className="text-xs text-slate-300">{loadingBackground ? "Loading high-quality visual..." : currentBackground.name}</p>
+            <p className="text-xs text-slate-300">
+              {loadingBackground ? "Loading high-quality visual..." : `${currentBackground.name} · Auto cycle enabled`}
+            </p>
 
             <p className="mb-1 mt-3 text-xs uppercase tracking-wider text-slate-300">Focus audio</p>
             <select
@@ -1040,6 +1133,19 @@ function App() {
               className="w-full rounded-xl border border-white/20 bg-slate-950/40 p-2 text-sm"
             >
               {breakTracks.map((track) => (
+                <option key={track.id} value={track.id}>
+                  {track.name}
+                </option>
+              ))}
+            </select>
+
+            <p className="mb-1 mt-3 text-xs uppercase tracking-wider text-slate-300">Long break audio</p>
+            <select
+              value={breakLongTrackId}
+              onChange={(e) => setBreakLongTrackId(e.target.value)}
+              className="w-full rounded-xl border border-white/20 bg-slate-950/40 p-2 text-sm"
+            >
+              {longBreakTracks.map((track) => (
                 <option key={track.id} value={track.id}>
                   {track.name}
                 </option>
