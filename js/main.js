@@ -824,6 +824,15 @@ class CourseBuilder {
     }
 
     addWall(z, height, theme) {
+        // Warning stripes on ground
+        for (let i = 0; i < 3; i++) {
+            const warnGeo = new THREE.BoxGeometry(CONFIG.trackWidth, 0.02, 0.3);
+            const warnMat = new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0xFFCC00 : 0x222222 });
+            const warn = new THREE.Mesh(warnGeo, warnMat);
+            warn.position.set(0, 0.01, z - 1.5 + i * 0.5);
+            this.courseGroup.add(warn);
+        }
+
         // The wall itself
         const wallGeo = new THREE.BoxGeometry(CONFIG.trackWidth, height, 0.6);
         const wallMat = new THREE.MeshStandardMaterial({
@@ -837,14 +846,29 @@ class CourseBuilder {
         wall.receiveShadow = true;
         this.courseGroup.add(wall);
 
+        // Grip marks on wall
+        for (let i = 0; i < Math.floor(height); i++) {
+            for (let j = 0; j < 5; j++) {
+                const gripGeo = new THREE.BoxGeometry(0.2, 0.1, 0.05);
+                const gripMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+                const grip = new THREE.Mesh(gripGeo, gripMat);
+                grip.position.set(
+                    (j / 5) * CONFIG.trackWidth - CONFIG.trackWidth / 2 + CONFIG.trackWidth / 10 + Math.random() * 0.5,
+                    0.5 + i * 1.0 + Math.random() * 0.3,
+                    z + 0.69
+                );
+                this.courseGroup.add(grip);
+            }
+        }
+
         // Warning stripes on top
         const stripeGeo = new THREE.BoxGeometry(CONFIG.trackWidth + 0.2, 0.15, 0.7);
-        const stripeMat = new THREE.MeshStandardMaterial({ color: 0xFFCC00 });
+        const stripeMat = new THREE.MeshStandardMaterial({ color: 0xFFCC00, emissive: 0x332200 });
         const stripe = new THREE.Mesh(stripeGeo, stripeMat);
         stripe.position.set(0, height + 0.05, z + 1);
         this.courseGroup.add(stripe);
 
-        // Small ground before wall
+        // Ground under wall
         const preGeo = new THREE.BoxGeometry(CONFIG.trackWidth, CONFIG.groundHeight, 2);
         const preMat = new THREE.MeshStandardMaterial({ color: theme.ground });
         const pre = new THREE.Mesh(preGeo, preMat);
@@ -885,6 +909,15 @@ class CourseBuilder {
     }
 
     addBeam(z, length, theme) {
+        // Warning arrows on ground before beam
+        for (let i = 0; i < 2; i++) {
+            const warnGeo = new THREE.BoxGeometry(2, 0.02, 0.15);
+            const warnMat = new THREE.MeshStandardMaterial({ color: 0xDDAA44, emissive: 0x332200 });
+            const warn = new THREE.Mesh(warnGeo, warnMat);
+            warn.position.set(0, 0.01, z - 1.0 + i * 0.4);
+            this.courseGroup.add(warn);
+        }
+
         // Narrow beam
         const beamGeo = new THREE.BoxGeometry(1.2, 0.3, length);
         const beamMat = new THREE.MeshStandardMaterial({
@@ -1657,6 +1690,14 @@ class ParkourGame {
 
         // Reset obstacles
         this.obstacles = [];
+
+        // Clear environment
+        const toRemove = [];
+        this.scene.traverse(child => {
+            if (child.userData.isEnvironment) toRemove.push(child);
+        });
+        toRemove.forEach(c => this.scene.remove(c));
+        this.sunLight = null;
     }
 
     replayRace() {
@@ -1710,6 +1751,7 @@ class ParkourGame {
             this.tournamentScores[r.name] = 0;
         });
 
+        document.getElementById('btn-next-tournament-race').style.display = '';
         this.selectedCourse = this.tournamentCourses[0];
         this.startRace();
     }
