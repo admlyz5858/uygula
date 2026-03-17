@@ -19,6 +19,7 @@ import {
   saveSettings,
   saveTheme,
 } from "./lib/storage";
+import { useRealtimeFocusRooms } from "./lib/focusRoomsRealtime";
 import { lastDays, streakFromRecords, upsertDayRecord } from "./stats/metrics";
 import type { AppProgress, AudioTrack, BackgroundItem, PlannerOutput, ThemeMode, TimerMode } from "./types";
 
@@ -247,9 +248,9 @@ const INPUT_LIMITS = {
   longBreakEvery: { min: 2, max: 8 },
 } as const;
 const FOCUS_ROOMS = [
-  { id: "deep-temple", name: "Deep Temple", participants: 19, bonusXp: 10 },
-  { id: "silent-lake", name: "Silent Lake", participants: 12, bonusXp: 8 },
-  { id: "night-owls", name: "Night Owls", participants: 27, bonusXp: 12 },
+  { id: "deep-temple", name: "Deep Temple", fallbackParticipants: 19, bonusXp: 10 },
+  { id: "silent-lake", name: "Silent Lake", fallbackParticipants: 12, bonusXp: 8 },
+  { id: "night-owls", name: "Night Owls", fallbackParticipants: 27, bonusXp: 12 },
 ] as const;
 const BOSS_CHALLENGES = [
   { id: "boss50", label: "Boss 50", minutes: 50, xpMultiplier: 2 },
@@ -416,6 +417,8 @@ function App() {
     () => TRACKS.filter((t) => t.mode === "longBreak" && progress.level >= t.unlockLevel),
     [progress.level],
   );
+  const focusRoomIds = useMemo(() => FOCUS_ROOMS.map((room) => room.id), []);
+  const { roomCounts, realtimeStatus, realtimeEnabled, realtimeConfigured } = useRealtimeFocusRooms(focusRoomIds, joinedRoomId);
 
   useEffect(() => {
     if (focusTracks.length > 0 && !focusTracks.some((track) => track.id === focusTrackId)) {
@@ -1359,9 +1362,20 @@ function App() {
             <h2 className="font-bold">Focus Rooms</h2>
           </div>
           <p className="text-sm text-slate-300">Join a room for social accountability and extra XP.</p>
+          <p className="mt-1 text-xs text-slate-300">
+            {realtimeConfigured
+              ? realtimeStatus === "connected"
+                ? "Realtime: connected to live room presence"
+                : realtimeStatus === "connecting"
+                  ? "Realtime: connecting..."
+                  : "Realtime: temporary issue, showing fallback counts"
+              : "Realtime disabled: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY"}
+          </p>
           <div className="mt-3 grid gap-2 md:grid-cols-3">
             {FOCUS_ROOMS.map((room) => {
               const joined = room.id === joinedRoomId;
+              const liveCount = roomCounts[room.id] ?? 0;
+              const onlineCount = realtimeEnabled ? liveCount : room.fallbackParticipants + (joined ? 1 : 0);
               return (
                 <button
                   key={room.id}
@@ -1371,7 +1385,7 @@ function App() {
                   }`}
                 >
                   <p className="font-semibold">{room.name}</p>
-                  <p className="text-xs text-slate-300">{room.participants + (joined ? 1 : 0)} users online</p>
+                  <p className="text-xs text-slate-300">{onlineCount} users online</p>
                   <p className="text-xs text-emerald-300">+{room.bonusXp} XP per focus session</p>
                 </button>
               );

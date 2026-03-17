@@ -37,7 +37,7 @@ It is designed to feel like **Game + Meditation + Productivity System**, not a p
 - 🔥 Streak tracking
 - ⚔ Boss challenge sessions (higher risk/reward)
 - 🛡 Distraction Guard (tracks and penalizes focus exits)
-- 👥 Focus rooms with social XP bonuses
+- 👥 Focus rooms with social XP bonuses (realtime presence when Supabase is configured)
 - 🧩 Break mini activities:
   - Watering plants
   - Rhythm tap
@@ -78,6 +78,7 @@ It is designed to feel like **Game + Meditation + Productivity System**, not a p
 - **Tailwind CSS**
 - **Framer Motion**
 - **IndexedDB** (`idb`)
+- **Supabase Realtime Presence** (optional, for live Focus Rooms)
 - **PWA** (`vite-plugin-pwa`)
 - **Capacitor Android**
 - **Vitest + Testing Library**
@@ -86,6 +87,20 @@ It is designed to feel like **Game + Meditation + Productivity System**, not a p
 ---
 
 ## 🚀 Local Development
+
+1) Configure environment (for live Focus Rooms):
+
+```bash
+cp .env.example .env
+```
+
+Fill:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+If omitted, Focus Rooms fall back to static demo counts.
+
+2) Install and run:
 
 ```bash
 npm install
