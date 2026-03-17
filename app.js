@@ -1,5 +1,6 @@
 const SETTINGS_STORAGE_KEY = "focus-pomodoro-settings-v1";
 const MEDIA_STORAGE_KEY = "focus-pomodoro-media-v1";
+const THEME_STORAGE_KEY = "focus-pomodoro-theme-v1";
 
 const DEFAULT_SETTINGS = {
   focusMinutes: 25,
@@ -59,6 +60,7 @@ const state = {
   selectedTrackId: TRACKS[0].id,
   volume: 0.45,
   isMuted: false,
+  themePreference: "system",
 };
 
 const modeLabel = document.getElementById("modeLabel");
@@ -66,8 +68,8 @@ const sessionCount = document.getElementById("sessionCount");
 const timerDisplay = document.getElementById("timerDisplay");
 const progressBar = document.getElementById("progressBar");
 const bgImage = document.getElementById("bgImage");
-const galleryImage = document.getElementById("galleryImage");
 const galleryCaption = document.getElementById("galleryCaption");
+const themeColorMeta = document.getElementById("themeColorMeta");
 
 const startPauseBtn = document.getElementById("startPauseBtn");
 const resetBtn = document.getElementById("resetBtn");
@@ -75,6 +77,9 @@ const skipBtn = document.getElementById("skipBtn");
 const saveSettingsBtn = document.getElementById("saveSettingsBtn");
 const prevVisualBtn = document.getElementById("prevVisualBtn");
 const nextVisualBtn = document.getElementById("nextVisualBtn");
+const themeAutoBtn = document.getElementById("themeAutoBtn");
+const themeLightBtn = document.getElementById("themeLightBtn");
+const themeDarkBtn = document.getElementById("themeDarkBtn");
 
 const musicSelect = document.getElementById("musicSelect");
 const volumeInput = document.getElementById("volumeInput");
@@ -87,6 +92,8 @@ const focusInput = document.getElementById("focusInput");
 const shortBreakInput = document.getElementById("shortBreakInput");
 const longBreakInput = document.getElementById("longBreakInput");
 const cycleInput = document.getElementById("cycleInput");
+
+const systemThemeMedia = window.matchMedia("(prefers-color-scheme: dark)");
 
 function loadSettings() {
   try {
@@ -121,6 +128,17 @@ function loadMediaPreferences() {
     state.isMuted = Boolean(parsed.isMuted);
   } catch (_) {
     // Varsayılan ayarlar ile devam et.
+  }
+}
+
+function loadThemePreference() {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === "light" || saved === "dark" || saved === "system") {
+      state.themePreference = saved;
+    }
+  } catch (_) {
+    state.themePreference = "system";
   }
 }
 
@@ -163,6 +181,39 @@ function clamp(value, min, max, fallback) {
     return fallback;
   }
   return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function getResolvedTheme() {
+  if (state.themePreference === "dark" || state.themePreference === "light") {
+    return state.themePreference;
+  }
+  return systemThemeMedia.matches ? "dark" : "light";
+}
+
+function applyTheme() {
+  const resolvedTheme = getResolvedTheme();
+  document.body.classList.remove("theme-light", "theme-dark");
+  document.body.classList.add(`theme-${resolvedTheme}`);
+  updateThemeButtons();
+
+  if (themeColorMeta) {
+    themeColorMeta.setAttribute("content", resolvedTheme === "dark" ? "#0f172a" : "#f8fafc");
+  }
+}
+
+function setThemePreference(theme) {
+  if (theme !== "system" && theme !== "light" && theme !== "dark") {
+    return;
+  }
+  state.themePreference = theme;
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+  applyTheme();
+}
+
+function updateThemeButtons() {
+  themeAutoBtn.classList.toggle("is-active", state.themePreference === "system");
+  themeLightBtn.classList.toggle("is-active", state.themePreference === "light");
+  themeDarkBtn.classList.toggle("is-active", state.themePreference === "dark");
 }
 
 function initializeCurrentMode() {
@@ -311,9 +362,8 @@ function setVisual(index) {
   const normalized = (index + VISUALS.length) % VISUALS.length;
   state.visualIndex = normalized;
   const visual = VISUALS[normalized];
-  galleryImage.src = visual.src;
   bgImage.src = visual.src;
-  galleryCaption.textContent = `${visual.title} · ${visual.credit}`;
+  galleryCaption.textContent = `Arka plan: ${visual.title} · ${visual.credit}`;
   saveMediaPreferences();
 }
 
@@ -439,9 +489,17 @@ nextVisualBtn.addEventListener("click", goToNextVisual);
 musicToggleBtn.addEventListener("click", toggleMusic);
 musicMuteBtn.addEventListener("click", toggleMute);
 volumeInput.addEventListener("input", updateVolume);
+themeAutoBtn.addEventListener("click", () => setThemePreference("system"));
+themeLightBtn.addEventListener("click", () => setThemePreference("light"));
+themeDarkBtn.addEventListener("click", () => setThemePreference("dark"));
 musicSelect.addEventListener("change", (event) => selectTrack(event.target.value, true));
 ambientPlayer.addEventListener("play", updateMusicButtons);
 ambientPlayer.addEventListener("pause", updateMusicButtons);
+systemThemeMedia.addEventListener("change", () => {
+  if (state.themePreference === "system") {
+    applyTheme();
+  }
+});
 
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) {
@@ -457,8 +515,10 @@ if ("serviceWorker" in navigator) {
 
 loadSettings();
 loadMediaPreferences();
+loadThemePreference();
 populateTrackSelect();
 fillInputs();
+applyTheme();
 initializeCurrentMode();
 setVisual(state.visualIndex);
 selectTrack(state.selectedTrackId);

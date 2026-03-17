@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#4f46e5" />
+    <meta id="themeColorMeta" name="theme-color" content="#0f172a" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="styles.css" />
     <title>Mobil Focus Pomodoro</title>
@@ -19,8 +19,17 @@
 
     <main class="app">
       <header class="app__header">
-        <h1>Focus Pomodoro</h1>
-        <p>Gelişmiş görseller + rahatlatıcı odak sesleri</p>
+        <div class="header-top">
+          <div>
+            <h1>Focus Pomodoro</h1>
+            <p>Arka plana gömülü görseller + şeffaf arayüz</p>
+          </div>
+          <div class="theme-switch" role="group" aria-label="Tema seçimi">
+            <button id="themeAutoBtn" class="btn btn--tiny btn--secondary theme-btn">Oto</button>
+            <button id="themeLightBtn" class="btn btn--tiny btn--secondary theme-btn">Açık</button>
+            <button id="themeDarkBtn" class="btn btn--tiny btn--secondary theme-btn">Koyu</button>
+          </div>
+        </div>
       </header>
 
       <section class="timer-card">
@@ -46,16 +55,13 @@
 
       <section class="media-card">
         <div class="media-head">
-          <h3>Stok telifsiz görseller</h3>
+          <h3>Arka plan görselleri</h3>
           <div class="media-actions">
             <button id="prevVisualBtn" class="btn btn--tiny btn--secondary">Önceki</button>
             <button id="nextVisualBtn" class="btn btn--tiny btn--secondary">Sonraki</button>
           </div>
         </div>
-        <figure class="visual-frame">
-          <img id="galleryImage" src="assets/images/autumn.webp" alt="Odak görseli" />
-          <figcaption id="galleryCaption">Autumn Scene</figcaption>
-        </figure>
+        <p id="galleryCaption" class="bg-caption">Arka plan: Autumn Scene</p>
       </section>
 
       <section class="music-card">

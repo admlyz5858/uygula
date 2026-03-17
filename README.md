@@ -11,7 +11,9 @@ Mobil cihazlara uygun, kurulum yapılabilen (PWA) basit bir Pomodoro uygulaması
 - Seans bitiminde ses + titreşim + bildirim denemesi
 - Service Worker ile temel offline kullanım
 - Gelişmiş animasyonlar (cinematic arka plan, yüzen glow efektleri, dinamik progress)
-- Telifsiz stok görsel galerisi
+- Arka plana gömülü stok görsel geçişi ve şeffaf (glassmorphism) uygulama katmanı
+- Karanlık / aydınlık / otomatik tema modu
+- Telifsiz stok arka plan görselleri
 - Telifsiz stok odak müzik/ambiyans oynatıcı (parça seçimi + ses kontrolü)
 
 ## Çalıştırma
