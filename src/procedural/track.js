@@ -2,321 +2,168 @@ import { createObstacle } from './obstacles.js';
 import { ForceZone } from '../physics/forces.js';
 
 class SeededRandom {
-    constructor(seed) {
-        this.seed = Math.abs(seed) || 1;
-    }
-    next() {
-        this.seed = (this.seed * 16807 + 0) % 2147483647;
-        return (this.seed - 1) / 2147483646;
-    }
+    constructor(seed) { this.seed = Math.abs(seed) || 1; }
+    next() { this.seed = (this.seed * 16807) % 2147483647; return (this.seed - 1) / 2147483646; }
     range(min, max) { return min + this.next() * (max - min); }
     int(min, max) { return Math.floor(this.range(min, max + 0.999)); }
     pick(arr) { return arr[Math.floor(this.next() * arr.length)]; }
     chance(p) { return this.next() < p; }
 }
 
-const WALL_MAT = 'metal';
-const MIN_WIDTH = 120;
+const WALL = 'metal';
 
 export class TrackGenerator {
     constructor(seed = 42) {
         this.rng = new SeededRandom(seed);
-        this.leftWall = [];
-        this.rightWall = [];
-        this.pegs = [];
+        this.segments = [];
         this.obstacles = [];
         this.forceZones = [];
         this.startPositions = [];
         this.finishY = 0;
-        this.cx = 0;
-        this.cy = 0;
-        this.width = 300;
+        this.trackWidth = 0;
+        this.trackHeight = 0;
+        this.trackMinX = 0;
+        this.trackMaxX = 0;
     }
 
     generate(marbleCount = 12) {
-        this.cx = 0;
-        this.cy = 0;
-        this.width = 300;
-        this.leftWall = [{ x: this.cx - this.width / 2, y: 0 }];
-        this.rightWall = [{ x: this.cx + this.width / 2, y: 0 }];
+        this.segments = [];
+        this.obstacles = [];
+        this.startPositions = [];
 
-        this.buildStartZone(marbleCount);
-        this.buildStraight(150);
-        this.buildPegBoard();
-        this.buildStraight(80);
-        this.buildCurve();
-        this.buildStraight(80);
-        this.buildObstacleSection();
-        this.buildStraight(100);
-        this.buildNarrowAndWiden();
-        this.buildStraight(80);
-        this.buildSteepDrop();
-        this.buildStraight(80);
-        this.buildSplitMerge();
-        this.buildStraight(80);
-        this.buildFinalRun();
-        this.buildFinish();
+        const W = 500;
+        const H = 900;
+        const wallThick = 5;
+        const channelW = 130;
+        this.trackWidth = W;
+        this.trackHeight = H;
 
-        return {
-            segments: this.buildAllSegments(),
-            obstacles: this.obstacles,
-            forceZones: this.forceZones,
-            startPositions: this.startPositions,
-            finishY: this.finishY,
-        };
-    }
+        this.addWall(-W / 2, 0, -W / 2, H);
+        this.addWall(W / 2, 0, W / 2, H);
+        this.addWall(-W / 2, 0, W / 2, 0);
+        this.addWall(-W / 2, H, W / 2, H);
 
-    pushWalls(leftX, rightX, y) {
-        this.leftWall.push({ x: leftX, y });
-        this.rightWall.push({ x: rightX, y });
-        this.cy = y;
-    }
+        const funnelW = Math.min(W - 40, marbleCount * 26);
+        const funnelL = -funnelW / 2;
+        const funnelR = funnelW / 2;
+        const funnelBottom = 100;
+        const neckW = 80;
 
-    extend(dy, dxShift = 0, newWidth = null) {
-        const w = Math.max(MIN_WIDTH, newWidth !== null ? newWidth : this.width);
-        const newCx = this.cx + dxShift;
-        const y = this.cy + dy;
-        this.pushWalls(newCx - w / 2, newCx + w / 2, y);
-        this.cx = newCx;
-        this.width = w;
-        return y;
-    }
-
-    buildStraight(length) {
-        return this.extend(length);
-    }
-
-    buildStartZone(marbleCount) {
-        const startW = Math.max(350, marbleCount * 28);
-        this.pushWalls(this.cx - startW / 2, this.cx + startW / 2, this.cy);
+        this.addWall(funnelL, 20, -neckW / 2, funnelBottom);
+        this.addWall(funnelR, 20, neckW / 2, funnelBottom);
 
         const cols = Math.ceil(Math.sqrt(marbleCount));
-        const rows = Math.ceil(marbleCount / cols);
-        const spacingX = (startW - 60) / Math.max(cols - 1, 1);
-        const spacingY = 26;
-
+        const spacingX = (funnelW - 30) / Math.max(cols - 1, 1);
         for (let i = 0; i < marbleCount; i++) {
             const col = i % cols;
             const row = Math.floor(i / cols);
             this.startPositions.push({
-                x: this.cx - startW / 2 + 30 + col * spacingX + this.rng.range(-2, 2),
-                y: this.cy + 20 + row * spacingY,
+                x: funnelL + 15 + col * spacingX + this.rng.range(-2, 2),
+                y: 30 + row * 24,
             });
         }
 
-        const gateY = this.cy + rows * spacingY + 40;
-        this.extend(gateY - this.cy, 0, this.width);
-    }
+        let y = funnelBottom;
 
-    buildPegBoard() {
-        const rowCount = this.rng.int(4, 7);
-        const startY = this.cy;
-        for (let r = 0; r < rowCount; r++) {
-            const py = startY + 30 + r * 55;
-            const pegCount = this.rng.int(2, 4);
-            const totalW = this.width * 0.6;
-            for (let c = 0; c < pegCount; c++) {
-                const px = this.cx - totalW / 2 + (c + 0.5) * (totalW / pegCount);
-                if (r % 2 === 1) {
-                    const offset = totalW / pegCount / 2;
-                    this.pegs.push({
-                        x1: px + offset - 15, y1: py,
-                        x2: px + offset + 15, y2: py,
-                        material: this.rng.pick(['rubber', 'metal', 'bouncy']),
-                    });
-                } else {
-                    this.pegs.push({
-                        x1: px - 15, y1: py,
-                        x2: px + 15, y2: py,
-                        material: this.rng.pick(['rubber', 'metal', 'bouncy']),
-                    });
-                }
+        const pegRows = this.rng.int(3, 5);
+        for (let r = 0; r < pegRows; r++) {
+            const py = y + 25 + r * 35;
+            const pegCols = this.rng.int(3, 6);
+            const pegSpread = W * 0.6;
+            for (let c = 0; c < pegCols; c++) {
+                const offset = (r % 2 === 0) ? 0 : pegSpread / pegCols / 2;
+                const px = -pegSpread / 2 + offset + c * (pegSpread / pegCols);
+                this.addPeg(px, py, this.rng.range(8, 14), this.rng.pick(['rubber', 'bouncy', 'metal']));
             }
         }
-        this.extend(rowCount * 55 + 60);
-    }
+        y += pegRows * 35 + 40;
 
-    buildCurve() {
-        const dir = this.rng.chance(0.5) ? 1 : -1;
-        const shift = dir * this.rng.range(80, 150);
-        this.extend(120, shift * 0.4);
-        this.extend(120, shift * 0.4);
-        this.extend(80, -shift * 0.3);
-
-        if (this.rng.chance(0.5)) {
-            this.forceZones.push({
-                type: 'wind',
-                x: this.cx, y: this.cy - 100,
-                width: this.width * 0.8, height: 80,
-                radius: 0,
-                strength: this.rng.range(40, 100),
-                direction: { x: dir * 0.8, y: 0 },
-            });
+        const rampCount = this.rng.int(3, 5);
+        for (let i = 0; i < rampCount; i++) {
+            const dir = (i % 2 === 0) ? 1 : -1;
+            const rampY = y + i * 60;
+            const rampLen = W * 0.75;
+            const gap = 50;
+            if (dir > 0) {
+                this.addWall(-W / 2 + 20, rampY, W / 2 - gap, rampY + 20, this.rng.pick(['metal', 'ice', 'wood']));
+            } else {
+                this.addWall(-W / 2 + gap, rampY + 20, W / 2 - 20, rampY, this.rng.pick(['metal', 'ice', 'wood']));
+            }
         }
-    }
-
-    buildObstacleSection() {
-        const maxObstacleR = Math.min(this.width * 0.3, 80);
+        y += rampCount * 60 + 30;
 
         if (this.rng.chance(0.7)) {
+            const spinY = y + 30;
+            const spinR = Math.min(50, W * 0.15);
             this.obstacles.push({
                 type: 'spinner',
-                x: this.cx,
-                y: this.cy + 60,
-                radius: this.rng.range(40, maxObstacleR),
+                x: this.rng.range(-40, 40),
+                y: spinY,
+                radius: spinR,
                 speed: this.rng.range(1.5, 3),
                 arms: this.rng.int(2, 3),
                 material: 'metal',
             });
-            this.extend(150);
+            y += 80;
         }
 
-        const pendCount = this.rng.int(1, 3);
-        for (let i = 0; i < pendCount; i++) {
-            const side = i % 2 === 0 ? -1 : 1;
-            this.obstacles.push({
-                type: 'pendulum',
-                x: this.cx + side * this.rng.range(10, 40),
-                y: this.cy + 20 + i * 130,
-                length: this.rng.range(50, 80),
-                speed: this.rng.range(1.5, 2.5),
-                maxAngle: this.rng.range(0.4, 0.8),
-                material: 'metal',
-            });
+        const pegRows2 = this.rng.int(2, 4);
+        for (let r = 0; r < pegRows2; r++) {
+            const py = y + 15 + r * 30;
+            const pegCols = this.rng.int(2, 5);
+            const spread = W * 0.5;
+            for (let c = 0; c < pegCols; c++) {
+                const offset = (r % 2 === 0) ? 0 : spread / pegCols / 2;
+                const px = -spread / 2 + offset + c * (spread / pegCols);
+                this.addPeg(px, py, this.rng.range(6, 12), this.rng.pick(['rubber', 'bouncy']));
+            }
         }
-        this.extend(pendCount * 130 + 60);
-    }
-
-    buildNarrowAndWiden() {
-        const narrowW = Math.max(MIN_WIDTH, this.rng.range(120, 160));
-        this.extend(60, 0, narrowW);
-        this.buildStraight(200);
-
-        if (this.rng.chance(0.5)) {
-            this.obstacles.push({
-                type: 'trapdoor',
-                x: this.cx,
-                y: this.cy - 100,
-                width: narrowW * 0.6,
-                openInterval: this.rng.range(2.5, 4),
-                openDuration: this.rng.range(1, 2),
-            });
-        }
-
-        this.extend(60, 0, this.rng.range(250, 350));
-        this.buildStraight(80);
-    }
-
-    buildSteepDrop() {
-        const zigCount = this.rng.int(2, 4);
-        const zigW = Math.max(MIN_WIDTH, this.width * 0.75);
-
-        for (let i = 0; i < zigCount; i++) {
-            const dir = (i % 2 === 0 ? 1 : -1) * this.rng.range(50, 100);
-            this.extend(this.rng.range(100, 160), dir, zigW);
-        }
-
-        if (this.rng.chance(0.5)) {
-            this.obstacles.push({
-                type: 'spinner',
-                x: this.cx,
-                y: this.cy - 80,
-                radius: Math.min(zigW * 0.25, 60),
-                speed: this.rng.range(2, 4),
-                arms: this.rng.int(2, 3),
-                material: 'metal',
-                clockwise: this.rng.chance(0.5),
-            });
-        }
-
-        this.extend(60, 0, Math.max(MIN_WIDTH, this.rng.range(200, 300)));
-    }
-
-    buildSplitMerge() {
-        const splitH = 200;
-        const w = this.width;
-        const dividerGap = 40;
-        const topY = this.cy;
-
-        this.pegs.push({
-            x1: this.cx, y1: topY + dividerGap,
-            x2: this.cx, y2: topY + splitH - dividerGap,
-            material: WALL_MAT,
-        });
+        y += pegRows2 * 30 + 30;
 
         if (this.rng.chance(0.6)) {
-            this.obstacles.push({
-                type: 'conveyor',
-                x: this.cx - w / 4,
-                y: topY + splitH / 2,
-                width: w / 3.5,
-                speed: this.rng.range(80, 160),
-                angle: 0,
-            });
+            const bumpCount = this.rng.int(2, 4);
+            for (let i = 0; i < bumpCount; i++) {
+                this.obstacles.push({
+                    type: 'bumper',
+                    x: this.rng.range(-W / 3, W / 3),
+                    y: y + this.rng.range(10, 60),
+                    radius: this.rng.range(12, 20),
+                    force: this.rng.range(150, 300),
+                });
+            }
+            y += 70;
         }
 
-        this.extend(splitH);
-        this.buildStraight(60);
+        if (y < H - 150) {
+            const funnelY = y;
+            const funnelEndY = H - 80;
+            const collectW = 60;
+            this.addWall(-W / 3, funnelY, -collectW / 2, funnelEndY);
+            this.addWall(W / 3, funnelY, collectW / 2, funnelEndY);
+        }
+
+        this.finishY = H - 50;
+        this.addWall(-W / 2 + 10, H - 10, W / 2 - 10, H - 10, 'rubber');
+
+        this.trackMinX = -W / 2;
+        this.trackMaxX = W / 2;
+
+        return {
+            segments: this.segments,
+            obstacles: this.obstacles,
+            forceZones: this.forceZones,
+            startPositions: this.startPositions,
+            finishY: this.finishY,
+            bounds: { minX: -W / 2, maxX: W / 2, minY: 0, maxY: H },
+        };
     }
 
-    buildFinalRun() {
-        const bumperCount = this.rng.int(2, 5);
-        for (let i = 0; i < bumperCount; i++) {
-            this.obstacles.push({
-                type: 'bumper',
-                x: this.cx + this.rng.range(-this.width / 3, this.width / 3),
-                y: this.cy + 20 + this.rng.range(0, 130),
-                radius: this.rng.range(12, 22),
-                force: this.rng.range(200, 400),
-            });
-        }
-        this.extend(180);
-
-        if (this.rng.chance(0.5)) {
-            this.obstacles.push({
-                type: 'elastic',
-                x: this.cx + this.rng.range(-50, 50),
-                y: this.cy - 50,
-                width: this.rng.range(50, 80),
-                bounceMult: this.rng.range(1.5, 2.5),
-            });
-        }
-
-        this.buildStraight(100);
+    addWall(x1, y1, x2, y2, material = WALL) {
+        this.segments.push({ x1, y1, x2, y2, material });
     }
 
-    buildFinish() {
-        const arenaW = this.width + 100;
-        this.extend(40, 0, arenaW);
-        this.buildStraight(200);
-
-        this.finishY = this.cy;
-
-        const catchY = this.cy + 80;
-        this.pegs.push({
-            x1: this.cx - arenaW / 2, y1: catchY,
-            x2: this.cx + arenaW / 2, y2: catchY,
-            material: 'rubber',
-        });
-        this.pushWalls(this.cx - arenaW / 2, this.cx + arenaW / 2, catchY + 20);
-    }
-
-    buildAllSegments() {
-        const segments = [];
-        for (let i = 0; i < this.leftWall.length - 1; i++) {
-            const a = this.leftWall[i];
-            const b = this.leftWall[i + 1];
-            segments.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, material: WALL_MAT });
-        }
-        for (let i = 0; i < this.rightWall.length - 1; i++) {
-            const a = this.rightWall[i];
-            const b = this.rightWall[i + 1];
-            segments.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, material: WALL_MAT });
-        }
-        for (const peg of this.pegs) {
-            segments.push(peg);
-        }
-        return segments;
+    addPeg(x, y, size, material = 'metal') {
+        this.segments.push({ x1: x - size, y1: y, x2: x + size, y2: y, material });
     }
 }
 
@@ -333,9 +180,8 @@ export function buildTrack(engine, renderer, seed, marbleCount) {
         if (obs) engine.addKinematicBody(obs);
     }
 
-    for (const zoneConfig of data.forceZones) {
-        const zone = new ForceZone(zoneConfig.type, zoneConfig);
-        engine.addForceZone(zone);
+    for (const zc of data.forceZones) {
+        engine.addForceZone(new ForceZone(zc.type, zc));
     }
 
     if (renderer) renderer.finishLineY = data.finishY;
@@ -343,5 +189,6 @@ export function buildTrack(engine, renderer, seed, marbleCount) {
     return {
         startPositions: data.startPositions,
         finishY: data.finishY,
+        bounds: data.bounds,
     };
 }

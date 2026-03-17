@@ -7,68 +7,82 @@ export class Camera {
         this.targetY = 0;
         this.zoom = 1;
         this.targetZoom = 1;
-        this.minZoom = 0.15;
-        this.maxZoom = 3;
-        this.smoothing = 0.06;
-        this.zoomSmoothing = 0.05;
+        this.minZoom = 0.1;
+        this.maxZoom = 4;
+        this.smoothing = 0.08;
+        this.zoomSmoothing = 0.06;
         this.shakeX = 0;
         this.shakeY = 0;
-        this.shakeDecay = 0.9;
+        this.shakeDecay = 0.88;
         this.shakeIntensity = 0;
-        this.mode = 'follow_leader';
+        this.mode = 'static';
         this.focusMarble = null;
         this.focusIndex = 0;
         this.cinematicTimer = 0;
-        this.autoSwitchInterval = 5;
+        this.autoSwitchInterval = 4;
         this.dramaticFinishZoom = false;
         this.panOffsetX = 0;
         this.panOffsetY = 0;
+        this.trackBounds = null;
     }
 
     shake(intensity) {
-        this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
+        this.shakeIntensity = Math.max(this.shakeIntensity, Math.min(intensity, 12));
     }
 
-    setMode(mode) {
-        this.mode = mode;
-    }
+    setMode(mode) { this.mode = mode; }
 
     focusOn(marble) {
         this.focusMarble = marble;
         this.mode = 'focus_single';
     }
 
+    setTrackBounds(bounds) {
+        this.trackBounds = bounds;
+        if (bounds) {
+            this.targetX = (bounds.minX + bounds.maxX) / 2;
+            this.targetY = (bounds.minY + bounds.maxY) / 2;
+            this.x = this.targetX;
+            this.y = this.targetY;
+            this.fitToTrack();
+        }
+    }
+
+    fitToTrack() {
+        if (!this.trackBounds) return;
+        const b = this.trackBounds;
+        const tw = b.maxX - b.minX + 60;
+        const th = b.maxY - b.minY + 60;
+        const zx = this.canvas.width / tw;
+        const zy = this.canvas.height / th;
+        this.targetZoom = Math.min(zx, zy);
+        this.zoom = this.targetZoom;
+    }
+
     update(dt, marbles) {
         this.cinematicTimer += dt;
-        const activeMarbles = marbles.filter(m => m.alive && !m.finished);
-        if (activeMarbles.length === 0 && marbles.length > 0) {
-            const last = marbles.filter(m => m.alive).sort((a, b) => a.y - b.y);
-            if (last.length > 0) {
-                this.targetX = last[0].x;
-                this.targetY = last[0].y;
-            }
-        }
 
         switch (this.mode) {
-            case 'follow_leader': {
-                if (activeMarbles.length > 0) {
-                    const leader = activeMarbles.reduce((best, m) => m.y > best.y ? m : best, activeMarbles[0]);
-                    this.targetX = leader.x;
-                    this.targetY = leader.y;
-                    this.focusMarble = leader;
-                    const spread = this.getMarbleSpread(activeMarbles);
-                    this.targetZoom = Math.max(this.minZoom, Math.min(1.2, 600 / Math.max(spread, 200)));
+            case 'static': {
+                if (this.trackBounds) {
+                    const b = this.trackBounds;
+                    this.targetX = (b.minX + b.maxX) / 2;
+                    this.targetY = (b.minY + b.maxY) / 2;
+                    const tw = b.maxX - b.minX + 60;
+                    const th = b.maxY - b.minY + 60;
+                    const zx = this.canvas.width / tw;
+                    const zy = this.canvas.height / th;
+                    this.targetZoom = Math.min(zx, zy);
                 }
                 break;
             }
-            case 'follow_pack': {
-                if (activeMarbles.length > 0) {
-                    let cx = 0, cy = 0;
-                    for (const m of activeMarbles) { cx += m.x; cy += m.y; }
-                    this.targetX = cx / activeMarbles.length;
-                    this.targetY = cy / activeMarbles.length;
-                    const spread = this.getMarbleSpread(activeMarbles);
-                    this.targetZoom = Math.max(this.minZoom, Math.min(1.5, 800 / Math.max(spread, 200)));
+            case 'follow_leader': {
+                const active = marbles.filter(m => m.alive && !m.finished);
+                if (active.length > 0) {
+                    const leader = active.reduce((best, m) => m.y > best.y ? m : best, active[0]);
+                    this.targetX = leader.x;
+                    this.targetY = leader.y;
+                    this.targetZoom = 1.5;
                 }
                 break;
             }
@@ -76,50 +90,30 @@ export class Camera {
                 if (this.focusMarble && this.focusMarble.alive) {
                     this.targetX = this.focusMarble.x;
                     this.targetY = this.focusMarble.y;
-                    this.targetZoom = 1.5;
+                    this.targetZoom = 2;
                 }
                 break;
             }
             case 'cinematic': {
-                if (this.cinematicTimer > this.autoSwitchInterval) {
+                const active = marbles.filter(m => m.alive && !m.finished);
+                if (this.cinematicTimer > this.autoSwitchInterval && active.length > 0) {
                     this.cinematicTimer = 0;
-                    if (activeMarbles.length > 0) {
-                        this.focusIndex = (this.focusIndex + 1) % activeMarbles.length;
-                    }
+                    this.focusIndex = (this.focusIndex + 1) % active.length;
                 }
-                if (activeMarbles.length > 0) {
-                    const m = activeMarbles[this.focusIndex % activeMarbles.length];
+                if (active.length > 0) {
+                    const m = active[this.focusIndex % active.length];
                     this.targetX = m.x;
                     this.targetY = m.y;
-                    this.targetZoom = 1.2;
+                    this.targetZoom = 1.8;
                 }
                 break;
             }
-            case 'overview': {
-                if (marbles.length > 0) {
-                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                    for (const m of marbles) {
-                        if (!m.alive) continue;
-                        minX = Math.min(minX, m.x);
-                        maxX = Math.max(maxX, m.x);
-                        minY = Math.min(minY, m.y);
-                        maxY = Math.max(maxY, m.y);
-                    }
-                    this.targetX = (minX + maxX) / 2;
-                    this.targetY = (minY + maxY) / 2;
-                    const w = maxX - minX + 400;
-                    const h = maxY - minY + 400;
-                    this.targetZoom = Math.max(this.minZoom, Math.min(1, Math.min(this.canvas.width / w, this.canvas.height / h)));
-                }
-                break;
-            }
-            case 'free':
-                break;
         }
 
-        if (this.dramaticFinishZoom) {
-            this.targetZoom = 2.0;
-            this.smoothing = 0.03;
+        if (this.dramaticFinishZoom && this.focusMarble) {
+            this.targetX = this.focusMarble.x;
+            this.targetY = this.focusMarble.y;
+            this.targetZoom = 2.5;
         }
 
         this.x += (this.targetX + this.panOffsetX - this.x) * this.smoothing;
@@ -135,18 +129,6 @@ export class Camera {
             this.shakeY = 0;
             this.shakeIntensity = 0;
         }
-    }
-
-    getMarbleSpread(marbles) {
-        if (marbles.length < 2) return 100;
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        for (const m of marbles) {
-            minX = Math.min(minX, m.x);
-            maxX = Math.max(maxX, m.x);
-            minY = Math.min(minY, m.y);
-            maxY = Math.max(maxY, m.y);
-        }
-        return Math.max(maxX - minX, maxY - minY);
     }
 
     applyTransform(ctx) {

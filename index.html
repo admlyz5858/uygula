@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#0a0a1a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="description" content="Ultra-realistic marble race physics simulator with procedural tracks, AI marbles, and cinematic visuals" />
-    <title>Marble Race Simulator</title>
+    <meta name="description" content="Marble Race Simulator" />
+    <title>Marble Race</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css" />
@@ -19,21 +19,21 @@
         <div class="top-bar">
             <div class="logo">MARBLE RACE</div>
             <div class="top-controls">
-                <button id="fpsToggle" class="icon-btn" title="Toggle FPS">📊</button>
-                <button id="leaderboardToggle" class="icon-btn" title="Toggle Leaderboard">🏆</button>
-                <button id="muteBtn" class="icon-btn" title="Toggle Sound">🔊</button>
+                <button id="fpsToggle" class="icon-btn" title="FPS">📊</button>
+                <button id="leaderboardToggle" class="icon-btn" title="Leaderboard">🏆</button>
+                <button id="muteBtn" class="icon-btn" title="Sound">🔊</button>
             </div>
         </div>
 
         <div class="control-panel" id="controlPanel">
             <div class="panel-header" id="panelToggle">
                 <span>Controls</span>
-                <span class="toggle-arrow">▲</span>
+                <span class="toggle-arrow">▼</span>
             </div>
             <div class="panel-body" id="panelBody">
                 <div class="control-row">
                     <label>Marbles</label>
-                    <input type="number" id="marbleCount" min="2" max="30" value="12" />
+                    <input type="number" id="marbleCount" min="2" max="30" value="10" />
                 </div>
                 <div class="control-row">
                     <label>Seed</label>
@@ -45,26 +45,24 @@
                 <div class="control-row">
                     <label>Camera</label>
                     <select id="cameraMode">
+                        <option value="static" selected>Full Track</option>
                         <option value="follow_leader">Follow Leader</option>
-                        <option value="follow_pack">Follow Pack</option>
                         <option value="cinematic">Cinematic</option>
-                        <option value="overview">Overview</option>
-                        <option value="free">Free</option>
                     </select>
                 </div>
                 <div class="control-row">
                     <label>Speed</label>
                     <select id="speedSelect">
-                        <option value="0.25">0.25x</option>
                         <option value="0.5">0.5x</option>
                         <option value="1" selected>1x</option>
                         <option value="1.5">1.5x</option>
                         <option value="2">2x</option>
+                        <option value="3">3x</option>
                     </select>
                 </div>
                 <div class="button-row">
                     <button id="startBtn" class="action-btn primary">▶ START RACE</button>
-                    <button id="restartBtn" class="action-btn secondary">↻ NEW RACE</button>
+                    <button id="restartBtn" class="action-btn secondary">↻ NEW TRACK</button>
                     <button id="replayBtn" class="action-btn secondary">⏪ REPLAY</button>
                 </div>
             </div>
