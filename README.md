@@ -27,3 +27,22 @@ Sonra tarayıcıdan:
 
 - Tarayıcı menüsünden **Ana Ekrana Ekle** seçeneğiyle uygulama gibi kurabilirsin.
 - Odak seansı sırasında ekranı kilitlemeden uygulamayı açık tutman önerilir.
+
+## Android APK derleme
+
+Capacitor ile Android kabuğu eklenmiştir.
+
+1. Gereksinimler:
+   - Node.js
+   - Java 21 (veya Gradle'ın desteklediği uygun JDK)
+   - Android SDK (ANDROID_HOME veya ANDROID_SDK_ROOT tanımlı)
+2. Komut:
+
+```bash
+npm install
+npm run build:apk
+```
+
+APK çıktısı:
+
+`android/app/build/outputs/apk/debug/app-debug.apk`
