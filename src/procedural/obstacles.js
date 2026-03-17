@@ -51,6 +51,9 @@ export class Spinner {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
+
+        ctx.shadowColor = '#ff6644';
+        ctx.shadowBlur = 8;
         ctx.strokeStyle = this.material.color || '#aab';
         ctx.lineWidth = this.armWidth;
         ctx.lineCap = 'round';
@@ -60,11 +63,19 @@ export class Spinner {
             ctx.moveTo(Math.cos(a) * 10, Math.sin(a) * 10);
             ctx.lineTo(Math.cos(a) * this.radius, Math.sin(a) * this.radius);
             ctx.stroke();
+            ctx.fillStyle = '#ddd';
+            ctx.beginPath();
+            ctx.arc(Math.cos(a) * this.radius, Math.sin(a) * this.radius, 4, 0, Math.PI * 2);
+            ctx.fill();
         }
-        ctx.fillStyle = '#666';
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#888';
         ctx.beginPath();
         ctx.arc(0, 0, 8, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = '#bbb';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
         ctx.restore();
     }
 }

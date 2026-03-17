@@ -164,33 +164,79 @@ export class Renderer {
     }
 
     renderForceZones(ctx, zones) {
+        const time = this.bgGradientPhase * 3;
         for (const zone of zones) {
             if (!zone.active) continue;
-            ctx.globalAlpha = 0.12;
             const zoneColors = {
-                fluid: '#2255cc',
-                gravityInvert: '#aa22cc',
-                vortex: '#cc6600',
-                magnetic: '#4466ff',
-                wind: '#22bb88',
-                randomForce: '#cc44cc',
-                repel: '#cc4444',
+                fluid: '#2266dd',
+                gravityInvert: '#bb33dd',
+                vortex: '#dd7700',
+                magnetic: '#5577ff',
+                wind: '#33cc99',
+                randomForce: '#dd55dd',
+                repel: '#dd5555',
             };
             const color = zoneColors[zone.type] || '#888';
-            ctx.fillStyle = color;
 
             if (zone.type === 'vortex' || zone.type === 'magnetic' || zone.type === 'repel') {
+                const pulseAlpha = 0.08 + Math.sin(time * 2) * 0.04;
+                ctx.globalAlpha = pulseAlpha;
+                const grad = ctx.createRadialGradient(zone.x, zone.y, 0, zone.x, zone.y, zone.radius);
+                grad.addColorStop(0, color);
+                grad.addColorStop(1, 'transparent');
+                ctx.fillStyle = grad;
                 ctx.beginPath();
                 ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
                 ctx.fill();
                 if (this.qualityLevel !== 'low') {
                     ctx.strokeStyle = color;
-                    ctx.lineWidth = 2;
-                    ctx.globalAlpha = 0.25;
+                    ctx.lineWidth = 1.5;
+                    ctx.globalAlpha = 0.2 + Math.sin(time * 3) * 0.1;
+                    ctx.setLineDash([4, 6]);
+                    ctx.beginPath();
+                    ctx.arc(zone.x, zone.y, zone.radius * 0.7, time, time + Math.PI * 1.5);
                     ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            } else if (zone.type === 'fluid') {
+                ctx.globalAlpha = 0.15;
+                const grad = ctx.createLinearGradient(
+                    zone.x - zone.width / 2, zone.y - zone.height / 2,
+                    zone.x - zone.width / 2, zone.y + zone.height / 2
+                );
+                grad.addColorStop(0, 'transparent');
+                grad.addColorStop(0.3, color);
+                grad.addColorStop(1, color);
+                ctx.fillStyle = grad;
+                ctx.fillRect(zone.x - zone.width / 2, zone.y - zone.height / 2, zone.width, zone.height);
+                if (this.qualityLevel !== 'low') {
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1;
+                    ctx.globalAlpha = 0.2;
+                    for (let i = 0; i < 3; i++) {
+                        const waveY = zone.y - zone.height / 2 + Math.sin(time * 1.5 + i) * 5 + i * zone.height / 4;
+                        ctx.beginPath();
+                        ctx.moveTo(zone.x - zone.width / 2, waveY);
+                        ctx.bezierCurveTo(
+                            zone.x - zone.width / 4, waveY - 5,
+                            zone.x + zone.width / 4, waveY + 5,
+                            zone.x + zone.width / 2, waveY
+                        );
+                        ctx.stroke();
+                    }
                 }
             } else {
+                ctx.globalAlpha = 0.1;
+                ctx.fillStyle = color;
                 ctx.fillRect(zone.x - zone.width / 2, zone.y - zone.height / 2, zone.width, zone.height);
+                if (this.qualityLevel !== 'low') {
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1;
+                    ctx.globalAlpha = 0.2;
+                    ctx.setLineDash([6, 4]);
+                    ctx.strokeRect(zone.x - zone.width / 2, zone.y - zone.height / 2, zone.width, zone.height);
+                    ctx.setLineDash([]);
+                }
             }
             ctx.globalAlpha = 1;
         }
@@ -209,6 +255,10 @@ export class Renderer {
                 this.renderTrail(ctx, marble);
             }
             this.renderSingleMarble(ctx, marble);
+        }
+        for (const marble of marbles) {
+            if (!marble.alive) continue;
+            this.renderMarbleLabel(ctx, marble);
         }
     }
 
@@ -277,6 +327,21 @@ export class Renderer {
             ctx.stroke();
         }
         ctx.globalAlpha = 1;
+    }
+
+    renderMarbleLabel(ctx, marble) {
+        if (this.qualityLevel === 'low') return;
+        ctx.save();
+        const fontSize = Math.max(8, 10 / this.camera.zoom);
+        ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = marble.color;
+        ctx.globalAlpha = 0.85;
+        const label = marble.finished ? `#${marble.rank} ${marble.name}` : marble.name;
+        ctx.fillText(label, marble.x, marble.y - marble.radius - 4);
+        ctx.globalAlpha = 1;
+        ctx.restore();
     }
 
     renderFinishLine(ctx) {
