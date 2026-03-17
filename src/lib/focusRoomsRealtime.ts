@@ -25,7 +25,9 @@ export function useRealtimeFocusRooms(roomIds: string[], joinedRoomId: string) {
   const memberKeyRef = useRef<string>(randomKey());
 
   const roomKey = useMemo(() => roomIds.join("|"), [roomIds]);
-  const isConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const isConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
   useEffect(() => {
     setRoomCounts((prev) => {
@@ -41,7 +43,12 @@ export function useRealtimeFocusRooms(roomIds: string[], joinedRoomId: string) {
     }
     setStatus("connecting");
 
-    const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setStatus("disabled");
+      return;
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -96,7 +103,7 @@ export function useRealtimeFocusRooms(roomIds: string[], joinedRoomId: string) {
       channelsRef.current = {};
       clientRef.current = null;
     };
-  }, [isConfigured, roomKey]);
+  }, [isConfigured, roomKey, supabaseUrl, supabaseAnonKey]);
 
   useEffect(() => {
     if (!isConfigured) return;
