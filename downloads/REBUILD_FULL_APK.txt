@@ -1,0 +1,1 @@
+cat focus-pomodoro-ai-full.apk.part-00 focus-pomodoro-ai-full.apk.part-01 > focus-pomodoro-ai-full.apk
