@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Focus Pomodoro AI Pro</string>
+    <string name="timer_notification_title">Pomodoro Running</string>
+    <string name="timer_notification_text">Stay focused and keep going.</string>
+    <string name="channel_timer">Focus Timer</string>
+    <string name="channel_general">General Alerts</string>
+    <string name="splash_title">Focus Pomodoro AI Pro</string>
+</resources>

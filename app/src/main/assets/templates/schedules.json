@@ -1,0 +1,69 @@
+{
+  "schedules": [
+    {
+      "name": "Deep Work Morning",
+      "slots": [
+        {
+          "time": "08:00",
+          "type": "focus",
+          "minutes": 50
+        },
+        {
+          "time": "09:00",
+          "type": "break",
+          "minutes": 10
+        },
+        {
+          "time": "09:15",
+          "type": "focus",
+          "minutes": 50
+        }
+      ]
+    },
+    {
+      "name": "Balanced Day",
+      "slots": [
+        {
+          "time": "10:00",
+          "type": "focus",
+          "minutes": 25
+        },
+        {
+          "time": "10:30",
+          "type": "break",
+          "minutes": 5
+        },
+        {
+          "time": "10:40",
+          "type": "focus",
+          "minutes": 25
+        },
+        {
+          "time": "11:10",
+          "type": "admin",
+          "minutes": 20
+        }
+      ]
+    },
+    {
+      "name": "Evening Sprint",
+      "slots": [
+        {
+          "time": "19:30",
+          "type": "focus",
+          "minutes": 30
+        },
+        {
+          "time": "20:05",
+          "type": "break",
+          "minutes": 5
+        },
+        {
+          "time": "20:15",
+          "type": "focus",
+          "minutes": 30
+        }
+      ]
+    }
+  ]
+}

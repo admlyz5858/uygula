@@ -1,0 +1,24 @@
+{
+  "rules": [
+    {
+      "id": "r1",
+      "name": "Energy Matching",
+      "description": "Assign deep work to peak energy hours and shallow tasks to low-energy windows."
+    },
+    {
+      "id": "r2",
+      "name": "Priority Pyramid",
+      "description": "Start with one high-impact task then medium tasks before admin work."
+    },
+    {
+      "id": "r3",
+      "name": "Interleaving",
+      "description": "Alternate cognitive load categories to reduce fatigue and increase retention."
+    },
+    {
+      "id": "r4",
+      "name": "Break Hygiene",
+      "description": "Take short movement and hydration breaks after each focus session."
+    }
+  ]
+}
