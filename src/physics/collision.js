@@ -137,8 +137,10 @@ export function ccdMarbleSegment(marble, seg, dt) {
 }
 
 export function resolveContact(contact, dt) {
+    if (dt <= 0) return 0;
     const { a: marble, b: other, nx, ny, depth, px, py } = contact;
     const isMarbleMarble = other !== null;
+    const surfaceMat = contact.surfaceMaterial || marble.material;
     const relVx = isMarbleMarble ? marble.vx - other.vx : marble.vx;
     const relVy = isMarbleMarble ? marble.vy - other.vy : marble.vy;
     const relVn = relVx * nx + relVy * ny;
@@ -168,7 +170,7 @@ export function resolveContact(contact, dt) {
 
     const restitution = isMarbleMarble
         ? combineRestitution(marble.material.restitution, other.material.restitution)
-        : marble.material.restitution;
+        : combineRestitution(marble.material.restitution, surfaceMat.restitution);
 
     const bias = (BAUMGARTE_FACTOR / dt) * Math.max(0, depth - SLOP);
     let jn = (-(1 + restitution) * relVn + bias) / effectiveMassN;
@@ -190,7 +192,7 @@ export function resolveContact(contact, dt) {
 
     const friction = isMarbleMarble
         ? combineFriction(marble.material.dynamicFriction, other.material.dynamicFriction)
-        : marble.material.dynamicFriction;
+        : combineFriction(marble.material.dynamicFriction, surfaceMat.dynamicFriction);
     const maxFriction = friction * contact.normalImpulseAccum;
 
     const effectiveMassT = invMassSum + marble.invInertia * raXt * raXt + (isMarbleMarble ? other.invInertia * rbXt * rbXt : 0);

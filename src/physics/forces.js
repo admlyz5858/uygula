@@ -78,8 +78,8 @@ export function applyForceZone(marble, zone) {
     if (!zone.active || !zone.contains(marble.x, marble.y)) return false;
     switch (zone.type) {
         case 'gravity': {
-            const gx = (zone.direction.x || 0) * zone.strength * marble.mass;
-            const gy = (zone.direction.y || 0) * zone.strength * marble.mass;
+            const gx = (zone.direction?.x ?? 0) * zone.strength * marble.mass;
+            const gy = (zone.direction?.y ?? 0) * zone.strength * marble.mass;
             marble.fx += gx;
             marble.fy += gy;
             return true;
@@ -132,8 +132,8 @@ export function applyForceZone(marble, zone) {
             return true;
         }
         case 'wind': {
-            marble.fx += zone.direction.x * zone.strength;
-            marble.fy += zone.direction.y * zone.strength;
+            marble.fx += (zone.direction?.x ?? 0) * zone.strength;
+            marble.fy += (zone.direction?.y ?? 0) * zone.strength;
             return true;
         }
         case 'teleport': {

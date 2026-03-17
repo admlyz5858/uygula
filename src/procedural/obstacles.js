@@ -81,9 +81,11 @@ export class Pendulum {
         this.material = getMaterial(config.material || 'metal');
         this.bobX = 0;
         this.bobY = 0;
+        this.simTime = 0;
     }
 
     update(time) {
+        this.simTime = time;
         this.angle = Math.sin(time * this.speed) * this.maxAngle;
         this.bobX = this.pivotX + Math.sin(this.angle) * this.length;
         this.bobY = this.pivotY + Math.cos(this.angle) * this.length;
@@ -100,7 +102,7 @@ export class Pendulum {
     }
 
     getVelocityAt(px, py) {
-        const omega = Math.cos(performance.now() / 1000 * this.speed) * this.maxAngle * this.speed;
+        const omega = Math.cos(this.simTime * this.speed) * this.maxAngle * this.speed;
         return {
             x: Math.cos(this.angle) * this.length * omega * 0.3,
             y: -Math.sin(this.angle) * this.length * omega * 0.3,
@@ -139,9 +141,11 @@ export class Oscillator {
         this.phase = config.phase || 0;
         this.currentX = this.x1;
         this.currentY = this.y1;
+        this.simTime = 0;
     }
 
     update(time) {
+        this.simTime = time;
         const t = (Math.sin(time * this.speed + this.phase) + 1) / 2;
         this.currentX = this.x1 + (this.x2 - this.x1) * t;
         this.currentY = this.y1 + (this.y2 - this.y1) * t;
@@ -163,7 +167,7 @@ export class Oscillator {
     }
 
     getVelocityAt() {
-        const omega = Math.cos(performance.now() / 1000 * this.speed + this.phase) * this.speed;
+        const omega = Math.cos(this.simTime * this.speed + this.phase) * this.speed;
         return {
             x: (this.x2 - this.x1) * omega * 0.3,
             y: (this.y2 - this.y1) * omega * 0.3,

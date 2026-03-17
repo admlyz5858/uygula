@@ -68,7 +68,6 @@ export class AudioEngine {
         if (!this.initialized || this.muted || speed < 50) return;
         const ctx = this.ctx;
         const now = ctx.currentTime;
-        const bufferSize = 2 * ctx.sampleRate;
         const buffer = ctx.createBuffer(1, 1024, ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < 1024; i++) {

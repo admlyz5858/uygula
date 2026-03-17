@@ -89,7 +89,12 @@ export class TouchController {
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 if (elapsed < 300 && dist < 15 && !this.isPanning) {
                     if (this.onTap) {
-                        const world = this.camera.screenToWorld(t.clientX, t.clientY);
+                        const rect = this.canvas.getBoundingClientRect();
+                        const scaleX = this.canvas.width / rect.width;
+                        const scaleY = this.canvas.height / rect.height;
+                        const canvasX = (t.clientX - rect.left) * scaleX;
+                        const canvasY = (t.clientY - rect.top) * scaleY;
+                        const world = this.camera.screenToWorld(canvasX, canvasY);
                         this.onTap(world.x, world.y);
                     }
                 }
@@ -136,7 +141,11 @@ export class TouchController {
     onMouseUp(e) {
         if (this.mouseDown && !this.mouseMoved && this.onTap) {
             const rect = this.canvas.getBoundingClientRect();
-            const world = this.camera.screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            const canvasX = (e.clientX - rect.left) * scaleX;
+            const canvasY = (e.clientY - rect.top) * scaleY;
+            const world = this.camera.screenToWorld(canvasX, canvasY);
             this.onTap(world.x, world.y);
         }
         this.mouseDown = false;

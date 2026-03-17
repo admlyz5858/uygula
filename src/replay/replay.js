@@ -109,6 +109,7 @@ export class ReplaySystem {
     }
 
     rewind(seconds) {
+        if (this.snapshots.length === 0) return;
         const framesToRewind = Math.floor(seconds / SNAPSHOT_INTERVAL);
         this.playbackIndex = Math.max(0, this.playbackIndex - framesToRewind);
         this.timer = this.snapshots[this.playbackIndex].time - this.snapshots[0].time;

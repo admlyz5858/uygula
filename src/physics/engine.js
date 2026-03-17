@@ -24,7 +24,6 @@ export class PhysicsEngine {
         this.contacts = [];
         this.events = [];
         this.onCollision = null;
-        this.spatialGrid = new SpatialGrid(200);
     }
 
     addMarble(marble) {
@@ -221,48 +220,3 @@ export class PhysicsEngine {
     }
 }
 
-class SpatialGrid {
-    constructor(cellSize) {
-        this.cellSize = cellSize;
-        this.cells = new Map();
-    }
-
-    clear() {
-        this.cells.clear();
-    }
-
-    getKey(x, y) {
-        const cx = Math.floor(x / this.cellSize);
-        const cy = Math.floor(y / this.cellSize);
-        return `${cx},${cy}`;
-    }
-
-    insert(obj, x, y, radius) {
-        const minCX = Math.floor((x - radius) / this.cellSize);
-        const maxCX = Math.floor((x + radius) / this.cellSize);
-        const minCY = Math.floor((y - radius) / this.cellSize);
-        const maxCY = Math.floor((y + radius) / this.cellSize);
-        for (let cx = minCX; cx <= maxCX; cx++) {
-            for (let cy = minCY; cy <= maxCY; cy++) {
-                const key = `${cx},${cy}`;
-                if (!this.cells.has(key)) this.cells.set(key, []);
-                this.cells.get(key).push(obj);
-            }
-        }
-    }
-
-    query(x, y, radius) {
-        const result = new Set();
-        const minCX = Math.floor((x - radius) / this.cellSize);
-        const maxCX = Math.floor((x + radius) / this.cellSize);
-        const minCY = Math.floor((y - radius) / this.cellSize);
-        const maxCY = Math.floor((y + radius) / this.cellSize);
-        for (let cx = minCX; cx <= maxCX; cx++) {
-            for (let cy = minCY; cy <= maxCY; cy++) {
-                const cell = this.cells.get(`${cx},${cy}`);
-                if (cell) for (const obj of cell) result.add(obj);
-            }
-        }
-        return result;
-    }
-}
