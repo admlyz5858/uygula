@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { Brain, Flame, Leaf, Play, Sparkles, Trophy, Wand2 } from "lucide-react";
+import { Brain, Flame, Leaf, Play, Shield, Sparkles, Swords, Trophy, Users, Wand2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { LocalNotifications } from "@capacitor/local-notifications";
@@ -246,6 +246,15 @@ const INPUT_LIMITS = {
   longBreakMinutes: { min: 10, max: 60 },
   longBreakEvery: { min: 2, max: 8 },
 } as const;
+const FOCUS_ROOMS = [
+  { id: "deep-temple", name: "Deep Temple", participants: 19, bonusXp: 10 },
+  { id: "silent-lake", name: "Silent Lake", participants: 12, bonusXp: 8 },
+  { id: "night-owls", name: "Night Owls", participants: 27, bonusXp: 12 },
+] as const;
+const BOSS_CHALLENGES = [
+  { id: "boss50", label: "Boss 50", minutes: 50, xpMultiplier: 2 },
+  { id: "boss75", label: "Boss 75", minutes: 75, xpMultiplier: 2.6 },
+] as const;
 
 function clampNumber(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
@@ -351,6 +360,12 @@ function App() {
   const [wateringPoints, setWateringPoints] = useState(0);
   const [rhythmPulseAt, setRhythmPulseAt] = useState(Date.now());
   const [rhythmScore, setRhythmScore] = useState(0);
+  const [distractionGuardEnabled, setDistractionGuardEnabled] = useState(true);
+  const [distractionCount, setDistractionCount] = useState(0);
+  const [joinedRoomId, setJoinedRoomId] = useState<string>("");
+  const [bossMode, setBossMode] = useState(false);
+  const [bossMinutes, setBossMinutes] = useState<number | null>(null);
+  const [bossSessionsWon, setBossSessionsWon] = useState(0);
   const [memoryCards, setMemoryCards] = useState(
     shuffle(["🌿", "🌿", "✨", "✨"]).map((value, idx) => ({
       id: idx,
@@ -373,6 +388,7 @@ function App() {
   const audioBRef = useRef<HTMLAudioElement | null>(null);
   const activeAudioRef = useRef<"a" | "b">("a");
   const completingRef = useRef(false);
+  const quickActionAppliedRef = useRef(false);
 
   const resolvedTheme = useMemo(() => {
     if (themeMode === "system") {
@@ -431,6 +447,7 @@ function App() {
   const weeklySessions = weekRecords.reduce((sum, item) => sum + item.sessions, 0);
   const weeklyMinutes = weekRecords.reduce((sum, item) => sum + item.focusMinutes, 0);
   const score = productivityScore(todayRecord.sessions, todayRecord.focusMinutes, progress.streakDays);
+  const joinedRoom = FOCUS_ROOMS.find((room) => room.id === joinedRoomId) ?? null;
 
   const plant = plantStage(progress.completedSessions, progress.plantHealth);
 
@@ -540,6 +557,42 @@ function App() {
     applyActiveVolume();
   }, [ambientVolume, muted, ready]);
 
+  useEffect(() => {
+    if (!ready || quickActionAppliedRef.current) return;
+    const quick = new URLSearchParams(window.location.search).get("quick");
+    if (!quick) return;
+    quickActionAppliedRef.current = true;
+    if (quick === "focus15") {
+      void startQuickSession(15, false);
+    } else if (quick === "focus25") {
+      void startQuickSession(25, false);
+    } else if (quick === "focus50") {
+      void startQuickSession(50, false);
+    } else if (quick === "boss50") {
+      void startQuickSession(50, true);
+    }
+    window.history.replaceState({}, "", window.location.pathname);
+  }, [ready]);
+
+  useEffect(() => {
+    function handleVisibility() {
+      if (!document.hidden || !running || mode !== "focus" || !distractionGuardEnabled) return;
+      setDistractionCount((prev) => prev + 1);
+      setQuote("Distraction Guard: You left focus mode. Come back and reclaim momentum.");
+      setProgress((prev) => {
+        const damage = bossMode ? 10 : 5;
+        const next = { ...prev, plantHealth: Math.max(0, prev.plantHealth - damage) };
+        void saveProgress(next);
+        return next;
+      });
+      void nudge();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [running, mode, distractionGuardEnabled, bossMode]);
+
   async function applyBackground(background: RichBackground) {
     setLoadingBackground(true);
     const ok = await preloadImage(background.url);
@@ -557,8 +610,8 @@ function App() {
     await saveSelectedBackgroundId(finalBackground.id);
   }
 
-  async function rotateBackground() {
-    const pool = unlockedBackgrounds.filter((bg) => bg.mood === (mode === "focus" ? "focus" : "break"));
+  async function rotateBackground(targetMode: TimerMode = mode) {
+    const pool = unlockedBackgrounds.filter((bg) => bg.mood === (targetMode === "focus" ? "focus" : "break"));
     const source = pool.length > 0 ? pool : unlockedBackgrounds;
     if (!source.length) return;
     const candidates = source.filter((bg) => bg.id !== currentBackground.id);
@@ -668,16 +721,16 @@ function App() {
     }
   }
 
-  async function startFocusWorld() {
+  async function startFocusWorld(forcedMode: TimerMode = mode) {
     setImmersive(true);
     setRunning(true);
     setQuote(FOCUS_QUOTES[Math.floor(Math.random() * FOCUS_QUOTES.length)]);
     completingRef.current = false;
     lastSecondRef.current = remainingSeconds;
     await requestWakeLock();
-    await crossfadeToTrack(mode, true);
+    await crossfadeToTrack(forcedMode, true);
     await refreshNativeNotification(true);
-    await rotateBackground();
+    await rotateBackground(forcedMode);
   }
 
   async function pauseSession() {
@@ -689,12 +742,14 @@ function App() {
   async function resetPhase() {
     if (mode === "focus" && running && remainingSeconds > 5) {
       setProgress((prev) => {
-        const next = { ...prev, plantHealth: Math.max(0, prev.plantHealth - 15) };
+        const next = { ...prev, plantHealth: Math.max(0, prev.plantHealth - (bossMode ? 22 : 15)) };
         void saveProgress(next);
         return next;
       });
-      setQuote("Focus interrupted. Your plant needs consistency.");
+      setQuote(bossMode ? "Boss challenge failed. Your tree took heavy damage." : "Focus interrupted. Your plant needs consistency.");
     }
+    setBossMode(false);
+    setBossMinutes(null);
     await pauseSession();
     const duration = getDurationByMode(mode, settings);
     setPhaseDuration(duration);
@@ -707,10 +762,13 @@ function App() {
     await nudge();
 
     if (mode === "focus") {
-      const gainedXp = xpForSession(settings.focusMinutes);
+      const baseMinutes = bossMode ? (bossMinutes ?? settings.focusMinutes) : settings.focusMinutes;
+      const bossMultiplier = bossMode ? (baseMinutes >= 75 ? 2.6 : 2) : 1;
+      const roomBonus = joinedRoom?.bonusXp ?? 0;
+      const gainedXp = Math.round(xpForSession(baseMinutes) * bossMultiplier + roomBonus);
       const updatedRecords = upsertDayRecord(progress.records, today, {
         sessions: 1,
-        focusMinutes: settings.focusMinutes,
+        focusMinutes: baseMinutes,
         xp: gainedXp,
       });
       const xpTotal = progress.xp + gainedXp;
@@ -721,11 +779,16 @@ function App() {
         completedSessions: progress.completedSessions + 1,
         records: updatedRecords,
         streakDays: streakFromRecords(updatedRecords),
-        plantHealth: Math.min(100, progress.plantHealth + 4),
+        plantHealth: Math.min(100, progress.plantHealth + (bossMode ? 7 : 4)),
       };
       setProgress(nextProgress);
       void saveProgress(nextProgress);
-      setQuote(BREAK_QUOTES[Math.floor(Math.random() * BREAK_QUOTES.length)]);
+      if (bossMode) {
+        setBossSessionsWon((prev) => prev + 1);
+        setQuote("Boss cleared. Massive XP gained.");
+      } else {
+        setQuote(BREAK_QUOTES[Math.floor(Math.random() * BREAK_QUOTES.length)]);
+      }
     } else {
       setQuote(FOCUS_QUOTES[Math.floor(Math.random() * FOCUS_QUOTES.length)]);
     }
@@ -743,8 +806,30 @@ function App() {
     setPhaseDuration(duration);
     setRemainingSeconds(duration);
     completingRef.current = false;
+    if (bossMode && mode === "focus") {
+      setBossMode(false);
+      setBossMinutes(null);
+    }
     await crossfadeToTrack(nextMode, true);
     await rotateBackground();
+  }
+
+  async function startQuickSession(minutes: number, asBoss: boolean) {
+    const safeMinutes = clampNumber(Math.round(minutes), INPUT_LIMITS.focusMinutes.min, INPUT_LIMITS.focusMinutes.max);
+    const nextSettings = sanitizeSettings({ ...settings, focusMinutes: safeMinutes });
+    setSettings(nextSettings);
+    await saveSettings(nextSettings);
+
+    setMode("focus");
+    setCycleCount(0);
+    setBossMode(asBoss);
+    setBossMinutes(asBoss ? safeMinutes : null);
+
+    const duration = safeMinutes * 60;
+    setPhaseDuration(duration);
+    setRemainingSeconds(duration);
+
+    await startFocusWorld("focus");
   }
 
   async function nudge() {
@@ -1036,6 +1121,11 @@ function App() {
               <div className="relative mt-6 h-2 overflow-hidden rounded-full bg-white/20">
                 <div className="h-2 rounded-full bg-gradient-to-r from-cyan-300 via-violet-400 to-emerald-300 transition-all duration-200" style={{ width: `${progressPercent}%` }} />
               </div>
+              {bossMode && (
+                <p className="relative mt-3 text-sm font-semibold text-rose-300">
+                  ⚔ Boss Challenge Active ({bossMinutes} min)
+                </p>
+              )}
             </motion.div>
 
             <div className="mt-4 flex flex-wrap gap-2">
@@ -1064,6 +1154,52 @@ function App() {
               >
                 {exportingVideo ? "Exporting 4K..." : "Export 4K Video"}
               </button>
+            </div>
+
+            <div className="mt-3 rounded-xl border border-white/15 bg-slate-950/30 p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <Play className="h-4 w-4 text-cyan-200" />
+                <p className="text-sm font-semibold">Quick Actions</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => void startQuickSession(15, false)} className="rounded-lg bg-cyan-500/80 px-3 py-2 text-sm font-semibold text-slate-900">
+                  Quick 15
+                </button>
+                <button onClick={() => void startQuickSession(25, false)} className="rounded-lg bg-cyan-500/80 px-3 py-2 text-sm font-semibold text-slate-900">
+                  Quick 25
+                </button>
+                <button onClick={() => void startQuickSession(50, false)} className="rounded-lg bg-cyan-500/80 px-3 py-2 text-sm font-semibold text-slate-900">
+                  Quick 50
+                </button>
+                {BOSS_CHALLENGES.map((challenge) => (
+                  <button
+                    key={challenge.id}
+                    onClick={() => void startQuickSession(challenge.minutes, true)}
+                    className="rounded-lg bg-rose-500/80 px-3 py-2 text-sm font-semibold text-white"
+                  >
+                    {challenge.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-xl border border-white/15 bg-slate-950/30 p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-amber-200" />
+                <p className="text-sm font-semibold">Distraction Guard</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setDistractionGuardEnabled((prev) => !prev)}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                    distractionGuardEnabled ? "bg-emerald-500/80 text-slate-900" : "bg-white/20"
+                  }`}
+                >
+                  {distractionGuardEnabled ? "Guard ON" : "Guard OFF"}
+                </button>
+                <p className="text-sm text-slate-200">Distractions: {distractionCount}</p>
+                {bossSessionsWon > 0 && <p className="text-sm text-rose-200">Boss wins: {bossSessionsWon}</p>}
+              </div>
             </div>
           </section>
 
@@ -1216,6 +1352,58 @@ function App() {
             </div>
           </section>
         </div>
+
+        <section className="glass-card mt-4 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Users className="h-5 w-5 text-cyan-200" />
+            <h2 className="font-bold">Focus Rooms</h2>
+          </div>
+          <p className="text-sm text-slate-300">Join a room for social accountability and extra XP.</p>
+          <div className="mt-3 grid gap-2 md:grid-cols-3">
+            {FOCUS_ROOMS.map((room) => {
+              const joined = room.id === joinedRoomId;
+              return (
+                <button
+                  key={room.id}
+                  onClick={() => setJoinedRoomId((prev) => (prev === room.id ? "" : room.id))}
+                  className={`rounded-xl border p-3 text-left ${
+                    joined ? "border-cyan-300 bg-cyan-500/20" : "border-white/20 bg-slate-950/30"
+                  }`}
+                >
+                  <p className="font-semibold">{room.name}</p>
+                  <p className="text-xs text-slate-300">{room.participants + (joined ? 1 : 0)} users online</p>
+                  <p className="text-xs text-emerald-300">+{room.bonusXp} XP per focus session</p>
+                </button>
+              );
+            })}
+          </div>
+          {joinedRoom && (
+            <p className="mt-2 text-sm text-cyan-100">
+              Joined: <span className="font-semibold">{joinedRoom.name}</span>
+            </p>
+          )}
+        </section>
+
+        <section className="glass-card mt-4 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Swords className="h-5 w-5 text-rose-300" />
+            <h2 className="font-bold">Boss Challenges</h2>
+          </div>
+          <p className="text-sm text-slate-300">
+            Challenge mode grants major XP boosts, but interruption causes stronger plant-health penalties.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {BOSS_CHALLENGES.map((challenge) => (
+              <button
+                key={challenge.id}
+                onClick={() => void startQuickSession(challenge.minutes, true)}
+                className="rounded-lg bg-rose-500/80 px-3 py-2 text-sm font-semibold text-white"
+              >
+                Start {challenge.minutes}m Boss (x{challenge.xpMultiplier} XP)
+              </button>
+            ))}
+          </div>
+        </section>
 
         {mode !== "focus" && (
           <section className="glass-card mt-4 p-4">

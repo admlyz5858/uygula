@@ -18,11 +18,13 @@ It is designed to feel like **Game + Meditation + Productivity System**, not a p
 - Start session with immersive transition
 - Dynamic nature backgrounds (remote stock + local fallback)
 - 5-minute automatic background rotation with smooth crossfade
+- Additional idle auto-rotation while app is open
 - Ken Burns style subtle zoom and animated particle layer
 - Calm/bright mood adaptation between focus and break modes
 
 ### Audio Engine
 - Mode-specific ambient and instrumental tracks
+- Expanded multi-track library for focus/short-break/long-break modes
 - Audio crossfade between tracks/modes
 - Volume normalization per track
 - Last 10 seconds adaptive ticking sound
@@ -33,10 +35,18 @@ It is designed to feel like **Game + Meditation + Productivity System**, not a p
 - 🧠 XP + level-up progression
 - 🏆 Daily/weekly quests
 - 🔥 Streak tracking
+- ⚔ Boss challenge sessions (higher risk/reward)
+- 🛡 Distraction Guard (tracks and penalizes focus exits)
+- 👥 Focus rooms with social XP bonuses
 - 🧩 Break mini activities:
   - Watering plants
   - Rhythm tap
   - Memory puzzle
+
+### Quick Actions
+- One-tap quick session starters (15/25/50)
+- Boss quick start
+- PWA home-screen shortcuts with prefilled quick actions
 
 ### AI Planning
 - User writes natural-language goal
