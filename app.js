@@ -475,6 +475,56 @@
     // Spinning obstacles
     addSpinner(1, 47, 103, 1.8, 2.5);
     addSpinner(12, 3.5, 283, 1.5, 3.0);
+
+    // Track edge stripes (colored markers at key sections)
+    const edgeStripeMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 0.2 });
+    const dangerStripeMat = new THREE.MeshStandardMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.2 });
+    for (let i = 0; i < trackWP.length; i += 3) {
+      const wp = trackWP[i];
+      const stripeMat = i > 30 && i < 55 ? dangerStripeMat : edgeStripeMat;
+      [-1, 1].forEach((side) => {
+        const geo = new THREE.BoxGeometry(0.15, 0.1, 2);
+        const stripe = new THREE.Mesh(geo, stripeMat);
+        stripe.position.set(wp.x + side * (wp.w / 2 - 0.1), wp.y + 0.28, wp.z);
+        scene.add(stripe);
+      });
+    }
+
+    // Half-pipe banked walls at the S-curve section
+    const bankMat = new THREE.MeshStandardMaterial({ color: 0x558855, roughness: 0.5, transparent: true, opacity: 0.4 });
+    const bankPositions = [
+      { x: 19, y: 39, z: 138, w: 4.2, angle: 0.4, side: 1 },
+      { x: 16, y: 36.5, z: 150, w: 4.2, angle: -0.3, side: -1 },
+      { x: -16, y: 28, z: 190, w: 4.2, angle: 0.35, side: -1 },
+    ];
+    bankPositions.forEach((bp) => {
+      const geo = new THREE.BoxGeometry(2, 0.3, 14);
+      const mesh = new THREE.Mesh(geo, bankMat);
+      mesh.position.set(bp.x + bp.side * bp.w / 2, bp.y + 0.5, bp.z);
+      mesh.rotation.z = bp.side * bp.angle;
+      scene.add(mesh);
+
+      const body = new CANNON.Body({ mass: 0, material: matTrack });
+      body.addShape(new CANNON.Box(new CANNON.Vec3(1, 0.15, 7)));
+      body.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
+      const bq = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, bp.side * bp.angle));
+      body.quaternion.set(bq.x, bq.y, bq.z, bq.w);
+      world.addBody(body);
+    });
+
+    // Danger zone warning signs near the spiral
+    const signMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xff8800, emissiveIntensity: 0.3 });
+    const signGeo = new THREE.BoxGeometry(1.5, 1.5, 0.1);
+    const spiralEntry = trackWP[16];
+    const sign = new THREE.Mesh(signGeo, signMat);
+    sign.position.set(spiralEntry.x - 3, spiralEntry.y + 3, spiralEntry.z);
+    scene.add(sign);
+    const signPost = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05, 0.05, 3, 4),
+      new THREE.MeshStandardMaterial({ color: 0x444444 })
+    );
+    signPost.position.set(spiralEntry.x - 3, spiralEntry.y + 1.5, spiralEntry.z);
+    scene.add(signPost);
   }
 
   function addBumper(x, y, z, radius, height) {

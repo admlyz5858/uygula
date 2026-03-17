@@ -1,83 +1,55 @@
-# Mobil Focus Pomodoro
+# Misket Yarışı - Marble Race Game
 
-Mobil cihazlara uygun, kurulum yapılabilen (PWA) basit bir Pomodoro uygulaması.
+3D fizik tabanlı misket yarışı oyunu. Three.js ve Cannon.js ile geliştirilmiş, tarayıcı üzerinde çalışan interaktif yarış deneyimi.
 
 ## Özellikler
 
-- Odak / kısa mola / uzun mola döngüsü
-- Uzun mola için tekrar aralığı ayarı (örn. her 4 odakta bir)
-- Başlat, duraklat, sıfırla ve faz geç butonları
-- Yerel depolamada ayarların saklanması
-- Seans bitiminde ses + titreşim + bildirim denemesi
-- Service Worker ile temel offline kullanım
-- Gelişmiş animasyonlar (cinematic arka plan, yüzen glow efektleri, dinamik progress)
-- Arka plana gömülü stok görsel geçişi ve şeffaf (glassmorphism) uygulama katmanı
-- Karanlık / aydınlık / otomatik tema modu
-- Telifsiz stok arka plan görselleri
-- Telifsiz stok odak müzik/ambiyans oynatıcı (parça seçimi + ses kontrolü)
+- **12 Benzersiz Misket**: Her biri farklı renk ve isimle (Kırmızı Şimşek, Mavi Fırtına, Yeşil Ejderha vb.)
+- **Detaylı Parkur**: 8 farklı bölüm içeren zengin yarış pisti
+  - Başlangıç Platformu
+  - Dik Yokuş (başlangıç hız bölgesi)
+  - Huni Bölgesi (daralan geçit)
+  - S Virajları (kıvrımlı bölüm)
+  - Ölüm Spirali (helisel iniş)
+  - Atlama Rampası (havadan atlayış)
+  - Şikane Bölgesi (dar zikzak virajlar)
+  - Final Düzlüğü (bitiş çizgisine koşu)
+- **Fizik Motoru**: Cannon.js ile gerçekçi fizik simülasyonu
+- **Engeller**: Dönen engelller, tamponlar, boost bölgeleri
+- **Dinamik Kamera**: 6 farklı açıdan otomatik geçişli kamera sistemi
+- **Görsel Efektler**: Misket izleri, konfeti, parçacık efektleri
+- **Ses Efektleri**: Geri sayım sesleri, yuvarlanma sesi
+- **Canlı Sıralama Tablosu**: Gerçek zamanlı pozisyon takibi
+- **Sonuç Ekranı**: Podyum ve detaylı yarış sonuçları
+- **Çevre Detayları**: Dağlar, ağaçlar, bulutlar, seyirci tribünleri
+
+## Nasıl Oynanır
+
+1. Ana menüde favori misketini seç
+2. "Yarışı Başlat" butonuna tıkla
+3. 3-2-1-BAŞLA! geri sayımını bekle
+4. Misketlerin yarışını izle ve heyecanlan!
+5. Yarış bittiğinde sonuçları gör
+6. "Tekrar Oyna" ile yeni bir yarış başlat
+
+## Teknolojiler
+
+- [Three.js](https://threejs.org/) r149 - 3D grafik render
+- [Cannon.js](https://schteppe.github.io/cannon.js/) 0.6.2 - Fizik motoru
+- Vanilla JavaScript (ES6+)
+- CSS3 (Glassmorphism UI)
+- Web Audio API (Ses efektleri)
 
 ## Çalıştırma
 
-Bu proje statik dosyalardan oluşur. Yerel sunucu ile çalıştır:
+Dosyaları bir web sunucusu üzerinden sunun:
 
 ```bash
-python3 -m http.server 8080
+npx serve .
 ```
 
-Sonra tarayıcıdan:
+Ardından tarayıcınızda `http://localhost:3000` adresini açın.
 
-`http://localhost:8080`
+## Mobil Destek
 
-## Mobil kullanım
-
-- Tarayıcı menüsünden **Ana Ekrana Ekle** seçeneğiyle uygulama gibi kurabilirsin.
-- Odak seansı sırasında ekranı kilitlemeden uygulamayı açık tutman önerilir.
-
-## Android APK derleme
-
-Capacitor ile Android kabuğu eklenmiştir.
-
-1. Gereksinimler:
-   - Node.js
-   - Java 21 (veya Gradle'ın desteklediği uygun JDK)
-   - Android SDK (ANDROID_HOME veya ANDROID_SDK_ROOT tanımlı)
-2. Komut:
-
-```bash
-npm install
-npm run build:apk
-```
-
-APK çıktısı:
-
-`android/app/build/outputs/apk/debug/app-debug.apk`
-
-## Medya lisansları (telifsiz stok)
-
-### Görseller
-
-- `assets/images/countryside.webp`  
-  Kaynak: `Landscape-countryside-way-fields (24243301441).jpg` (Wikimedia Commons)  
-  Lisans: **CC0 1.0 (Public Domain Dedication)**
-
-- `assets/images/river.webp`  
-  Kaynak: `Beautiful river landscape in the fall.jpg` (Wikimedia Commons)  
-  Lisans: **Public Domain**
-
-- `assets/images/autumn.webp`  
-  Kaynak: `Beautiful autumn day.jpg` (Wikimedia Commons)  
-  Lisans: **Public Domain**
-
-### Müzik / Ambiyans
-
-- `assets/music/gymnopedie-focus.ogg`  
-  Kaynak: `Gymnopedie No. 1..ogg` (Wikimedia Commons)  
-  Lisans: **CC0 1.0**
-
-- `assets/music/waves-focus.ogg`  
-  Kaynak: `Waves.ogg` (Wikimedia Commons)  
-  Lisans: **Public Domain**
-
-- `assets/music/campfire-focus.ogg`  
-  Kaynak: `Campfire sound ambience.ogg` (Wikimedia Commons)  
-  Lisans: **CC BY 3.0** (Atıf: Glaneur de sons)
+Oyun tamamen responsif tasarıma sahiptir ve mobil cihazlarda da oynanabilir. PWA desteği sayesinde ana ekrana eklenebilir.

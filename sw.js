@@ -1,4 +1,4 @@
-const CACHE_NAME = "focus-pomodoro-v3";
+const CACHE_NAME = "misket-yarisi-v1";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,12 +6,6 @@ const ASSETS = [
   "./app.js",
   "./manifest.webmanifest",
   "./icon.svg",
-  "./assets/images/autumn.webp",
-  "./assets/images/countryside.webp",
-  "./assets/images/river.webp",
-  "./assets/music/campfire-focus.ogg",
-  "./assets/music/gymnopedie-focus.ogg",
-  "./assets/music/waves-focus.ogg",
 ];
 
 self.addEventListener("install", (event) => {
@@ -28,11 +22,6 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-      return fetch(event.request);
-    }),
+    fetch(event.request).catch(() => caches.match(event.request)),
   );
 });
