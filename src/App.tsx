@@ -35,6 +35,7 @@ import type {
 } from "./types";
 
 type RichBackground = BackgroundItem & { unlockLevel: number; mood: "focus" | "break" };
+type AppPage = "focus" | "rooms" | "stats" | "settings" | "kpss";
 
 const SETTINGS_DEFAULT = {
   focusMinutes: 25,
@@ -380,6 +381,7 @@ async function preloadImage(src: string, timeout = 4500): Promise<boolean> {
 
 function App() {
   const [ready, setReady] = useState(false);
+  const [activePage, setActivePage] = useState<AppPage>("focus");
   const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const [settings, setSettings] = useState(SETTINGS_DEFAULT);
   const [progress, setProgress] = useState<AppProgress>({
@@ -668,16 +670,24 @@ function App() {
     if (!quick) return;
     quickActionAppliedRef.current = true;
     if (quick === "focus15") {
+      setActivePage("focus");
       void startQuickSession(15, false);
     } else if (quick === "focus25") {
+      setActivePage("focus");
       void startQuickSession(25, false);
     } else if (quick === "focus50") {
+      setActivePage("focus");
       void startQuickSession(50, false);
     } else if (quick === "boss50") {
+      setActivePage("focus");
       void startQuickSession(50, true);
     }
     window.history.replaceState({}, "", window.location.pathname);
   }, [ready]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activePage]);
 
   useEffect(() => {
     function handleVisibility() {
@@ -838,6 +848,7 @@ function App() {
   }
 
   async function startFocusWorld(forcedMode: TimerMode = mode) {
+    setActivePage("focus");
     setImmersive(true);
     setRunning(true);
     setQuote(FOCUS_QUOTES[Math.floor(Math.random() * FOCUS_QUOTES.length)]);
@@ -965,6 +976,7 @@ function App() {
   }
 
   async function startQuickSession(minutes: number, asBoss: boolean) {
+    setActivePage("focus");
     const safeMinutes = clampNumber(Math.round(minutes), INPUT_LIMITS.focusMinutes.min, INPUT_LIMITS.focusMinutes.max);
     const nextSettings = sanitizeSettings({ ...settings, focusMinutes: safeMinutes });
     setSettings(nextSettings);
@@ -984,6 +996,7 @@ function App() {
   }
 
   async function startSimulationSession(minutes: number) {
+    setActivePage("focus");
     const safeMinutes = clampNumber(Math.round(minutes), 40, 140);
     const nextSettings = sanitizeSettings({ ...settings, focusMinutes: safeMinutes });
     setSettings(nextSettings);
@@ -1368,7 +1381,27 @@ function App() {
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="mb-4 flex flex-wrap gap-2">
+          {([
+            { key: "focus", label: "Odak" },
+            { key: "rooms", label: "Odalar" },
+            { key: "stats", label: "İstatistik" },
+            { key: "settings", label: "Ayarlar" },
+            { key: "kpss", label: "KPSS" },
+          ] as Array<{ key: AppPage; label: string }>).map((page) => (
+            <button
+              key={page.key}
+              onClick={() => setActivePage(page.key)}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                activePage === page.key ? "bg-cyan-500 text-slate-900" : "bg-white/20 text-white"
+              }`}
+            >
+              {page.label}
+            </button>
+          ))}
+        </div>
+
+        <div className={`${activePage === "focus" ? "grid" : "hidden"} gap-4 lg:grid-cols-[1.2fr_0.8fr]`}>
           <section className="glass-card p-5">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1547,7 +1580,7 @@ function App() {
           </section>
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className={`${activePage === "focus" ? "mt-4 grid" : "hidden"} gap-4 lg:grid-cols-3`}>
           <section className="glass-card p-4 lg:col-span-2">
             <div className="mb-2 flex items-center gap-2">
               <Brain className="h-5 w-5 text-cyan-200" />
@@ -1668,7 +1701,7 @@ function App() {
           </section>
         </div>
 
-        <section className="glass-card mt-4 p-4">
+        <section className={`${activePage === "rooms" ? "glass-card mt-4 p-4" : "hidden"}`}>
           <div className="mb-2 flex items-center gap-2">
             <Users className="h-5 w-5 text-cyan-200" />
             <h2 className="font-bold">Focus Rooms</h2>
@@ -1710,7 +1743,7 @@ function App() {
           )}
         </section>
 
-        <section className="glass-card mt-4 p-4">
+        <section className={`${activePage === "rooms" ? "glass-card mt-4 p-4" : "hidden"}`}>
           <div className="mb-2 flex items-center gap-2">
             <Swords className="h-5 w-5 text-rose-300" />
             <h2 className="font-bold">Boss Challenges</h2>
@@ -1753,7 +1786,7 @@ function App() {
           </div>
         </section>
 
-        {mode !== "focus" && (
+        {mode !== "focus" && activePage === "focus" && (
           <section className="glass-card mt-4 p-4">
             <h2 className="mb-3 flex items-center gap-2 text-lg font-bold">
               <Sparkles className="h-5 w-5 text-emerald-300" />
@@ -1801,7 +1834,7 @@ function App() {
           </section>
         )}
 
-        <section className="glass-card mt-4 p-4">
+        <section className={`${activePage === "stats" ? "glass-card mt-4 p-4" : "hidden"}`}>
           <div className="mb-2 flex items-center gap-2">
             <Trophy className="h-5 w-5 text-amber-300" />
             <h2 className="font-bold">Stats & Psychological Momentum</h2>
@@ -1845,7 +1878,7 @@ function App() {
           </div>
         </section>
 
-        <section className="glass-card mt-4 p-4">
+        <section className={`${activePage === "settings" ? "glass-card mt-4 p-4" : "hidden"}`}>
           <div className="mb-3 flex items-center gap-2">
             <Flame className="h-5 w-5 text-rose-300" />
             <h2 className="font-bold">Timer Settings</h2>
@@ -1909,7 +1942,7 @@ function App() {
           </button>
         </section>
 
-        <section className="glass-card mt-4 p-4">
+        <section className={`${activePage === "kpss" ? "glass-card mt-4 p-4" : "hidden"}`}>
           <div className="mb-2 flex items-center gap-2">
             <Brain className="h-5 w-5 text-cyan-200" />
             <h2 className="font-bold">KPSS Goal Module</h2>
@@ -2047,7 +2080,7 @@ function App() {
           </div>
         </section>
 
-        <section className="glass-card mt-4 p-4">
+        <section className={`${activePage === "kpss" ? "glass-card mt-4 p-4" : "hidden"}`}>
           <div className="mb-2 flex items-center gap-2">
             <Trophy className="h-5 w-5 text-amber-300" />
             <h2 className="font-bold">KPSS Net Tracking</h2>
@@ -2102,7 +2135,7 @@ function App() {
           </div>
         </section>
 
-        <section className="glass-card mt-4 p-4">
+        <section className={`${activePage === "kpss" ? "glass-card mt-4 p-4" : "hidden"}`}>
           <div className="mb-2 flex items-center gap-2">
             <Shield className="h-5 w-5 text-emerald-300" />
             <h2 className="font-bold">Wrong Notebook + Spaced Review</h2>
@@ -2169,7 +2202,7 @@ function App() {
           </div>
         </section>
 
-        <section className="glass-card mt-4 p-4">
+        <section className={`${activePage === "kpss" ? "glass-card mt-4 p-4" : "hidden"}`}>
           <div className="mb-2 flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-violet-300" />
             <h2 className="font-bold">KPSS AI Coach</h2>

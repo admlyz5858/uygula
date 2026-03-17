@@ -47,6 +47,7 @@ It is designed to feel like **Game + Meditation + Productivity System**, not a p
 - One-tap quick session starters (15/25/50)
 - Boss quick start
 - PWA home-screen shortcuts with prefilled quick actions
+- Page-based navigation (Focus / Rooms / Stats / Settings / KPSS) with button tabs
 
 ### AI Planning
 - User writes natural-language goal
