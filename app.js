@@ -43,6 +43,7 @@
   const timeValEl = document.getElementById("timeVal");
   const yourPosEl = document.getElementById("yourPos");
   const yourPosTextEl = document.getElementById("yourPosText");
+  const sectionNameEl = document.getElementById("sectionName");
   const marbleGridEl = document.getElementById("marbleGrid");
   const startBtnEl = document.getElementById("startBtn");
   const replayBtnEl = document.getElementById("replayBtn");
@@ -111,7 +112,7 @@
   // Ground (safety net)
   const groundBody = new CANNON.Body({ mass: 0, material: matTrack });
   groundBody.addShape(new CANNON.Plane());
-  groundBody.quaternion.setFromEulerAngles(-Math.PI / 2, 0, 0);
+  groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
   groundBody.position.y = -20;
   world.addBody(groundBody);
 
@@ -384,6 +385,63 @@
       c.scale.set(1 + Math.random(), 0.4 + Math.random() * 0.3, 1 + Math.random());
       scene.add(c);
     }
+
+    // Mountains in background
+    const mountainMat = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.9 });
+    const snowMat = new THREE.MeshStandardMaterial({ color: 0xddddee, roughness: 0.8 });
+    const mountainPositions = [
+      { x: -200, z: 300, s: 80, h: 120 },
+      { x: 200, z: 350, s: 60, h: 90 },
+      { x: -150, z: 500, s: 100, h: 150 },
+      { x: 150, z: 500, s: 70, h: 110 },
+      { x: 0, z: 550, s: 90, h: 130 },
+      { x: -250, z: 100, s: 50, h: 70 },
+      { x: 250, z: 150, s: 65, h: 95 },
+    ];
+    mountainPositions.forEach((mp) => {
+      const mtn = new THREE.Mesh(new THREE.ConeGeometry(mp.s, mp.h, 6), mountainMat);
+      mtn.position.set(mp.x, -20 + mp.h / 2 - 10, mp.z);
+      scene.add(mtn);
+      const snow = new THREE.Mesh(new THREE.ConeGeometry(mp.s * 0.35, mp.h * 0.25, 6), snowMat);
+      snow.position.set(mp.x, -20 + mp.h - 10 - mp.h * 0.12, mp.z);
+      scene.add(snow);
+    });
+
+    // Spectator stands along the track
+    const standMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.8 });
+    const standPositions = [
+      { x: -12, y: 80, z: 5, rot: 0 },
+      { x: 25, y: 45, z: 140, rot: -0.3 },
+      { x: -30, y: 20, z: 200, rot: 0.5 },
+      { x: 25, y: 2, z: 355, rot: -0.2 },
+    ];
+    standPositions.forEach((sp) => {
+      const stand = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 3), standMat);
+      stand.position.set(sp.x, sp.y - 1, sp.z);
+      stand.rotation.y = sp.rot;
+      stand.castShadow = true;
+      scene.add(stand);
+
+      const backGeo = new THREE.BoxGeometry(8, 2, 0.3);
+      const back = new THREE.Mesh(backGeo, standMat);
+      back.position.set(sp.x - Math.sin(sp.rot) * 1.3, sp.y + 0.8, sp.z - Math.cos(sp.rot) * 1.3);
+      back.rotation.y = sp.rot;
+      scene.add(back);
+
+      const dotColors = [0xff4444, 0x4444ff, 0x44ff44, 0xffff44, 0xff44ff];
+      for (let i = 0; i < 12; i++) {
+        const dot = new THREE.Mesh(
+          new THREE.SphereGeometry(0.15, 6, 6),
+          new THREE.MeshStandardMaterial({ color: dotColors[i % dotColors.length] })
+        );
+        dot.position.set(
+          sp.x + (Math.random() - 0.5) * 6,
+          sp.y + 0.5 + Math.random() * 0.5,
+          sp.z + (Math.random() - 0.5) * 1.5
+        );
+        scene.add(dot);
+      }
+    });
 
     // Boost zone indicators (glowing track sections)
     const boostZones = [
@@ -728,9 +786,38 @@
     }
   }
 
+  const TRACK_SECTIONS = [
+    { minZ: 0, maxZ: 10, name: "Başlangıç Platformu" },
+    { minZ: 10, maxZ: 65, name: "Dik Yokuş" },
+    { minZ: 65, maxZ: 110, name: "Huni Bölgesi" },
+    { minZ: 110, maxZ: 195, name: "S Virajları" },
+    { minZ: 195, maxZ: 225, name: "Ölüm Spirali" },
+    { minZ: 225, maxZ: 260, name: "Atlama Rampası" },
+    { minZ: 260, maxZ: 320, name: "Şikane Bölgesi" },
+    { minZ: 320, maxZ: 400, name: "Final Düzlüğü" },
+  ];
+
+  function updateSectionDisplay() {
+    let leader = state.marbles[0];
+    let maxProg = -1;
+    for (const m of state.marbles) {
+      if (!m.finished && m.progress > maxProg) {
+        maxProg = m.progress;
+        leader = m;
+      }
+    }
+    const z = leader.body.position.z;
+    const section = TRACK_SECTIONS.find((s) => z >= s.minZ && z < s.maxZ);
+    if (section) {
+      sectionNameEl.classList.remove("hidden");
+      sectionNameEl.textContent = section.name;
+    }
+  }
+
   function showResults() {
     resultsScreen.classList.remove("hidden");
     hudEl.classList.add("hidden");
+    sectionNameEl.classList.add("hidden");
 
     // Podium
     const podiumEl = document.getElementById("podium");
@@ -866,14 +953,25 @@
     spinners.forEach((s) => {
       s.angle += s.speed * dt;
       s.mesh.rotation.y = s.angle;
-      s.body.quaternion.setFromEulerAngles(0, s.angle, 0);
+      s.body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), s.angle);
     });
   }
 
   // ───────── Audio ─────────
+  let audioCtx = null;
+  let rollingNoise = null;
+  let rollingGain = null;
+
+  function getAudioCtx() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+  }
+
   function beep(freq, dur, vol) {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = getAudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
@@ -884,6 +982,59 @@
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + dur);
+    } catch (_) {}
+  }
+
+  function startRollingSound() {
+    try {
+      const ctx = getAudioCtx();
+      if (ctx.state === "suspended") ctx.resume();
+      if (rollingNoise) return;
+
+      const bufferSize = ctx.sampleRate * 2;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * 0.3;
+      }
+
+      rollingNoise = ctx.createBufferSource();
+      rollingNoise.buffer = buffer;
+      rollingNoise.loop = true;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.value = 200;
+      filter.Q.value = 0.8;
+
+      rollingGain = ctx.createGain();
+      rollingGain.gain.value = 0;
+
+      rollingNoise.connect(filter);
+      filter.connect(rollingGain);
+      rollingGain.connect(ctx.destination);
+      rollingNoise.start();
+    } catch (_) {}
+  }
+
+  function updateRollingSound() {
+    if (!rollingGain || state.selectedIdx < 0) return;
+    try {
+      const sel = state.marbles[state.selectedIdx];
+      const v = sel.body.velocity;
+      const speed = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+      const targetVol = Math.min(speed / 40, 0.08);
+      rollingGain.gain.value += (targetVol - rollingGain.gain.value) * 0.1;
+    } catch (_) {}
+  }
+
+  function stopRollingSound() {
+    try {
+      if (rollingNoise) {
+        rollingNoise.stop();
+        rollingNoise = null;
+        rollingGain = null;
+      }
     } catch (_) {}
   }
 
@@ -955,6 +1106,7 @@
     hudEl.classList.remove("hidden");
     countdownEl.classList.remove("hidden");
     yourPosEl.classList.add("hidden");
+    sectionNameEl.classList.add("hidden");
     state.phase = "countdown";
     state.cdValue = 3;
     state.cdTimer = 0;
@@ -1009,6 +1161,7 @@
         countdownEl.classList.add("hidden");
         state.phase = "racing";
         removeStartGate();
+        startRollingSound();
         state.marbles.forEach((m) => {
           m.body.velocity.set((Math.random() - 0.5) * 0.8, 0, 1.5 + Math.random() * 0.5);
         });
@@ -1065,6 +1218,7 @@
     });
 
     updateLeaderboard();
+    updateSectionDisplay();
 
     // Speed display
     if (state.selectedIdx >= 0) {
@@ -1074,6 +1228,7 @@
       speedValEl.textContent = Math.round(speed);
     }
     timeValEl.textContent = state.raceTime.toFixed(1);
+    updateRollingSound();
 
     updateParticles(dt);
     updateConfetti(dt);
@@ -1087,6 +1242,7 @@
     // Check race end
     if (state.finishOrder.length >= MARBLE_DEFS.length) {
       state.phase = "finished";
+      stopRollingSound();
       setTimeout(showResults, 1200);
     }
     if (state.raceTime > FINISH_TIMEOUT) {
@@ -1098,6 +1254,7 @@
         }
       });
       state.phase = "finished";
+      stopRollingSound();
       setTimeout(showResults, 800);
     }
   }
@@ -1115,8 +1272,10 @@
   function newRace() {
     resultsScreen.classList.add("hidden");
     menuScreen.classList.remove("hidden");
+    sectionNameEl.classList.add("hidden");
     state.phase = "menu";
     state.selectedIdx = -1;
+    stopRollingSound();
     startBtnEl.disabled = true;
     document.querySelectorAll(".marble-card").forEach((c) => c.classList.remove("selected"));
     resetMarbles();
