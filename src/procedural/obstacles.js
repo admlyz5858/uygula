@@ -1,5 +1,4 @@
 import { getMaterial } from '../physics/materials.js';
-import { ForceZone } from '../physics/forces.js';
 
 export class Spinner {
     constructor(config) {

@@ -179,10 +179,10 @@ class MarbleRaceApp {
         for (let i = 0; i < this.marbleCount; i++) {
             const pos = trackData.startPositions[i] || {
                 x: (Math.random() - 0.5) * 150,
-                y: -30 - i * 25,
+                y: 20 + i * 25,
             };
             const color = this.renderer.getMarbleColor(i);
-            const radius = 10 + (i % 3);
+            const radius = 11;
             const marble = new Marble(pos.x, pos.y, radius, {
                 color,
                 glowColor: color,
@@ -196,13 +196,16 @@ class MarbleRaceApp {
 
         this.engine.paused = true;
         this.renderer.camera.setMode('follow_pack');
-        this.renderer.camera.targetZoom = 0.7;
-        this.renderer.camera.zoom = 0.5;
-        const startPos = trackData.startPositions[0] || { x: 0, y: 0 };
-        this.renderer.camera.x = startPos.x;
-        this.renderer.camera.y = startPos.y;
-        this.renderer.camera.targetX = startPos.x;
-        this.renderer.camera.targetY = startPos.y;
+        this.renderer.camera.targetZoom = 0.6;
+        this.renderer.camera.zoom = 0.6;
+        let avgX = 0, avgY = 0;
+        for (const p of trackData.startPositions) { avgX += p.x; avgY += p.y; }
+        avgX /= (trackData.startPositions.length || 1);
+        avgY /= (trackData.startPositions.length || 1);
+        this.renderer.camera.x = avgX;
+        this.renderer.camera.y = avgY;
+        this.renderer.camera.targetX = avgX;
+        this.renderer.camera.targetY = avgY;
 
         this.replay.startRecording();
         this.audio.init().then(() => this.audio.startMusic());
@@ -298,8 +301,9 @@ class MarbleRaceApp {
 
         if (this.raceState === 'racing') {
             this.raceTimer += dt;
-            const timeScale = this.renderer.slowMo.getScale();
-            this.engine.slowMotion = timeScale * (parseFloat(this.uiElements.speedSelect?.value) || 1);
+            const slowMoScale = this.renderer.slowMo.getScale();
+            const userSpeed = parseFloat(this.uiElements.speedSelect?.value) || 1;
+            this.engine.slowMotion = slowMoScale * userSpeed;
             this.engine.update(dt);
 
             for (const ai of this.ais) {
@@ -333,8 +337,8 @@ class MarbleRaceApp {
                 }
             }
 
-            if (marble.y > this.finishY + 500 || marble.y < -2000 ||
-                marble.x < -3000 || marble.x > 3000) {
+            if (marble.y > this.finishY + 500 || marble.y < -500 ||
+                marble.x < -2000 || marble.x > 2000) {
                 if (!marble.finished) {
                     marble.finished = true;
                     marble.finishTime = this.raceTimer;
