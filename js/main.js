@@ -311,7 +311,18 @@ class StickmanModel {
         const ctx = canvas.getContext('2d');
 
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.roundRect(0, 8, 256, 48, 8);
+        ctx.beginPath();
+        const r = 8, rx = 0, ry = 8, rw = 256, rh = 48;
+        ctx.moveTo(rx + r, ry);
+        ctx.lineTo(rx + rw - r, ry);
+        ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + r);
+        ctx.lineTo(rx + rw, ry + rh - r);
+        ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - r, ry + rh);
+        ctx.lineTo(rx + r, ry + rh);
+        ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - r);
+        ctx.lineTo(rx, ry + r);
+        ctx.quadraticCurveTo(rx, ry, rx + r, ry);
+        ctx.closePath();
         ctx.fill();
 
         ctx.font = 'bold 24px "Exo 2", Arial, sans-serif';
@@ -609,6 +620,7 @@ class Racer {
         this.position = 0;
         this.stumbleTimer = 0;
         this.staminaFactor = 1.0;
+        this._celebrationStarted = false;
         this.model.resetPose();
         this.model.group.position.set(this.laneX, 0, 0);
     }
@@ -1227,6 +1239,7 @@ class ParkourGame {
         this.obstacles = [];
         this.courseLength = 0;
 
+        this.sunLight = null;
         this.selectedCourse = COURSES[0];
         this.selectedRacerCount = CONFIG.defaultRacerCount;
         this.selectedRacerData = [];
@@ -1316,19 +1329,20 @@ class ParkourGame {
         this.scene.add(hemi);
 
         // Directional light (sun)
-        const sun = new THREE.DirectionalLight(0xffffff, 1.2);
-        sun.position.set(20, 30, 10);
-        sun.castShadow = true;
-        sun.shadow.mapSize.width = CONFIG.shadowMapSize;
-        sun.shadow.mapSize.height = CONFIG.shadowMapSize;
-        sun.shadow.camera.near = 0.5;
-        sun.shadow.camera.far = 100;
-        sun.shadow.camera.left = -30;
-        sun.shadow.camera.right = 30;
-        sun.shadow.camera.top = 30;
-        sun.shadow.camera.bottom = -10;
-        sun.userData.isEnvironment = true;
-        this.scene.add(sun);
+        this.sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        this.sunLight.position.set(20, 30, 10);
+        this.sunLight.castShadow = true;
+        this.sunLight.shadow.mapSize.width = CONFIG.shadowMapSize;
+        this.sunLight.shadow.mapSize.height = CONFIG.shadowMapSize;
+        this.sunLight.shadow.camera.near = 0.5;
+        this.sunLight.shadow.camera.far = 120;
+        this.sunLight.shadow.camera.left = -30;
+        this.sunLight.shadow.camera.right = 30;
+        this.sunLight.shadow.camera.top = 50;
+        this.sunLight.shadow.camera.bottom = -10;
+        this.sunLight.userData.isEnvironment = true;
+        this.scene.add(this.sunLight);
+        this.scene.add(this.sunLight.target);
 
         // Ground plane (infinite look)
         const groundGeo = new THREE.PlaneGeometry(200, 500);
@@ -1791,18 +1805,16 @@ class ParkourGame {
                 r.update(scaledDt, time, this.obstacles, this.courseLength, this.raceTime);
             });
 
-            // Check for first finisher
-            const firstFinisher = this.racers.find(r => r.finished && r.position === 0);
-            if (!firstFinisher) {
-                const justFinished = this.racers.find(r => r.finished && r.position === 0);
-                if (justFinished) {
-                    this.particles.emit(justFinished.model.group.position, justFinished.baseColor, 30);
-                }
-            }
-
             // Assign positions
             const sorted = [...this.racers].sort((a, b) => b.progress - a.progress);
             sorted.forEach((r, i) => { r.position = i; });
+
+            // Update sun to follow racers for proper shadows
+            if (this.sunLight) {
+                const avgZ = sorted.reduce((s, r) => s + r.progress, 0) / sorted.length;
+                this.sunLight.position.set(20, 30, avgZ + 10);
+                this.sunLight.target.position.set(0, 0, avgZ);
+            }
 
             // Particles for finishers
             this.racers.forEach(r => {

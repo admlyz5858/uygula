@@ -1,18 +1,17 @@
 {
-  "name": "workspace",
+  "name": "parkur-yarislari",
   "version": "1.0.0",
-  "description": "Mobil cihazlara uygun, kurulum yapılabilen (PWA) basit bir Pomodoro uygulaması.",
-  "main": "app.js",
+  "description": "3D Parkur Yarışları - Three.js tabanlı parkur yarış oyunu. YouTube için yarışlar kaydedilebilir.",
+  "main": "js/main.js",
   "scripts": {
-    "build:web": "rm -rf dist && mkdir -p dist && cp index.html styles.css app.js manifest.webmanifest icon.svg sw.js dist/ && cp -r assets dist/",
-    "sync:android": "npm run build:web && npx cap sync android",
-    "build:apk": "npm run sync:android && cd android && ./gradlew assembleDebug"
+    "start": "npx http-server -p 8080 -o",
+    "build:web": "rm -rf dist && mkdir -p dist/js && cp index.html styles.css dist/ && cp js/main.js dist/js/"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/admlyz5858/uygula.git"
   },
-  "keywords": [],
+  "keywords": ["parkour", "race", "3d", "threejs", "game"],
   "author": "",
   "license": "ISC",
   "bugs": {
