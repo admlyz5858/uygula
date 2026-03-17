@@ -1,7 +1,7 @@
 {
-  "name": "workspace",
+  "name": "misket-yarisi",
   "version": "1.0.0",
-  "description": "Mobil cihazlara uygun, kurulum yapılabilen (PWA) basit bir Pomodoro uygulaması.",
+  "description": "3D Misket Yarışı (Marble Race) oyunu - Three.js ve Cannon.js ile geliştirilmiş tarayıcı tabanlı yarış oyunu.",
   "main": "app.js",
   "scripts": {
     "build:web": "rm -rf dist && mkdir -p dist && cp index.html styles.css app.js manifest.webmanifest icon.svg sw.js dist/ && cp -r assets dist/",
@@ -12,7 +12,7 @@
     "type": "git",
     "url": "git+https://github.com/admlyz5858/uygula.git"
   },
-  "keywords": [],
+  "keywords": ["marble-race", "3d-game", "three.js", "cannon.js"],
   "author": "",
   "license": "ISC",
   "bugs": {
