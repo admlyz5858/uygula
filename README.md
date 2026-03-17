@@ -53,6 +53,14 @@ It is designed to feel like **Game + Meditation + Productivity System**, not a p
 - Planner splits into Pomodoro blocks
 - Session and schedule recommendations generated automatically
 
+### KPSS Mode (exam-oriented)
+- KPSS goal module (track/topic/daily question + time targets)
+- Net tracking + trial entry + trend panel
+- Wrong notebook + spaced repetition (1/3/7/14 day review)
+- KPSS AI coach plan (goal, remaining days, current net, weak topics)
+- Daily/weekly KPSS tasks
+- Simulation mode (exam-like timed discipline blocks)
+
 ### Stats & Psychology
 - Daily and weekly session charts
 - 12-week heatmap (GitHub-style)

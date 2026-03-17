@@ -1,27 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { format } from "date-fns";
+import { addDays, format, startOfWeek } from "date-fns";
 import { motion } from "framer-motion";
 import { Brain, Flame, Leaf, Play, Shield, Sparkles, Swords, Trophy, Users, Wand2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Haptics, ImpactStyle } from "@capacitor/haptics";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { generateAiPlan } from "./ai/planner";
+import { generateAiPlan, generateKpssCoachPlan } from "./ai/planner";
 import { levelFromXp, plantStage, productivityScore, xpForSession } from "./gamification/engine";
 import {
   loadAmbientVolume,
   loadProgress,
+  loadKpssData,
   loadSelectedBackgroundId,
   loadSettings,
   loadTheme,
   saveAmbientVolume,
   saveProgress,
+  saveKpssData,
   saveSelectedBackgroundId,
   saveSettings,
   saveTheme,
 } from "./lib/storage";
 import { useRealtimeFocusRooms } from "./lib/focusRoomsRealtime";
 import { lastDays, streakFromRecords, upsertDayRecord } from "./stats/metrics";
-import type { AppProgress, AudioTrack, BackgroundItem, PlannerOutput, ThemeMode, TimerMode } from "./types";
+import type {
+  AppProgress,
+  AudioTrack,
+  BackgroundItem,
+  KpssData,
+  KpssTrack,
+  PlannerOutput,
+  ThemeMode,
+  TimerMode,
+} from "./types";
 
 type RichBackground = BackgroundItem & { unlockLevel: number; mood: "focus" | "break" };
 
@@ -256,6 +267,32 @@ const BOSS_CHALLENGES = [
   { id: "boss50", label: "Boss 50", minutes: 50, xpMultiplier: 2 },
   { id: "boss75", label: "Boss 75", minutes: 75, xpMultiplier: 2.6 },
 ] as const;
+const KPSS_TEMPLATES: Array<{
+  id: string;
+  label: string;
+  goal: { track: KpssTrack; topic: string; dailyQuestions: number; dailyMinutes: number };
+}> = [
+  {
+    id: "gkgy-speed",
+    label: "GK-GY Hız",
+    goal: { track: "GK-GY", topic: "Paragraf + Problem", dailyQuestions: 140, dailyMinutes: 180 },
+  },
+  {
+    id: "history-recall",
+    label: "Tarih Ezber + Tekrar",
+    goal: { track: "GK-GY", topic: "Tarih + Vatandaşlık tekrar", dailyQuestions: 100, dailyMinutes: 170 },
+  },
+  {
+    id: "education-core",
+    label: "Eğitim Bilimleri Yoğun",
+    goal: { track: "Egitim Bilimleri", topic: "Öğrenme Psikolojisi + Gelişim", dailyQuestions: 120, dailyMinutes: 200 },
+  },
+  {
+    id: "oabt-drill",
+    label: "ÖABT Soru Kampı",
+    goal: { track: "OABT", topic: "Alan bilgisi deneme setleri", dailyQuestions: 110, dailyMinutes: 210 },
+  },
+];
 
 function clampNumber(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
@@ -285,6 +322,23 @@ function sanitizeSettings(input: typeof SETTINGS_DEFAULT): typeof SETTINGS_DEFAU
 
 function getWeeklyBarHeight(sessions: number): number {
   return clampNumber(Math.round(sessions * 18), 6, 144);
+}
+
+function netFromCorrectWrong(correct: number, wrong: number): number {
+  return Number((correct - wrong / 4).toFixed(2));
+}
+
+function generateId(prefix: string): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function nextReviewDate(stage: number): string {
+  const intervals = [1, 3, 7, 14];
+  const index = clampNumber(stage, 0, intervals.length - 1);
+  return format(addDays(new Date(), intervals[index]), "yyyy-MM-dd");
 }
 
 function formatClock(totalSeconds: number): string {
@@ -357,6 +411,33 @@ function App() {
 
   const [goalInput, setGoalInput] = useState("Study physics for 3 hours");
   const [plannerOutput, setPlannerOutput] = useState<PlannerOutput | null>(null);
+  const [kpssData, setKpssData] = useState<KpssData>({
+    goal: {
+      track: "GK-GY",
+      topic: "Paragraf + Problem",
+      dailyQuestions: 120,
+      dailyMinutes: 180,
+    },
+    logs: [],
+    trials: [],
+    mistakes: [],
+    reviews: [],
+    aiGoalInput: "KPSS'ye 90 gün kaldı. GK-GY netimi 75'e çıkar.",
+    remainingDays: 90,
+    currentNet: 52,
+  });
+  const [kpssCoachOutput, setKpssCoachOutput] = useState<PlannerOutput | null>(null);
+  const [sessionQuestionInput, setSessionQuestionInput] = useState(40);
+  const [sessionCorrectInput, setSessionCorrectInput] = useState(28);
+  const [sessionWrongInput, setSessionWrongInput] = useState(8);
+  const [trialCorrectInput, setTrialCorrectInput] = useState(62);
+  const [trialWrongInput, setTrialWrongInput] = useState(18);
+  const [mistakeTopicInput, setMistakeTopicInput] = useState("Paragraf");
+  const [mistakeQuestionRefInput, setMistakeQuestionRefInput] = useState("Deneme-3 Soru-24");
+  const [mistakeErrorTypeInput, setMistakeErrorTypeInput] = useState("Dikkat hatası");
+  const [mistakeReasonInput, setMistakeReasonInput] = useState("Soru kökü atlandı");
+  const [simulationMode, setSimulationMode] = useState(false);
+  const [simulationMinutes, setSimulationMinutes] = useState(75);
 
   const [wateringPoints, setWateringPoints] = useState(0);
   const [rhythmPulseAt, setRhythmPulseAt] = useState(Date.now());
@@ -451,21 +532,37 @@ function App() {
   const weeklyMinutes = weekRecords.reduce((sum, item) => sum + item.focusMinutes, 0);
   const score = productivityScore(todayRecord.sessions, todayRecord.focusMinutes, progress.streakDays);
   const joinedRoom = FOCUS_ROOMS.find((room) => room.id === joinedRoomId) ?? null;
+  const todayKpssLogs = kpssData.logs.filter((log) => log.date === today);
+  const todayQuestionsSolved = todayKpssLogs.reduce((sum, log) => sum + log.questions, 0);
+  const todayCorrect = todayKpssLogs.reduce((sum, log) => sum + log.correct, 0);
+  const todayWrong = todayKpssLogs.reduce((sum, log) => sum + log.wrong, 0);
+  const todayKpssMinutes = todayKpssLogs.reduce((sum, log) => sum + log.minutes, 0);
+  const todayNet = netFromCorrectWrong(todayCorrect, todayWrong);
+  const kpssGoalQuestionGap = kpssData.goal.dailyQuestions - todayQuestionsSolved;
+  const kpssGoalMinuteGap = kpssData.goal.dailyMinutes - todayKpssMinutes;
+  const dueMistakes = kpssData.mistakes.filter((item) => item.nextReviewAt <= today);
+  const thisWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const weeklyTrialsCount = kpssData.trials.filter((trial) => trial.date >= thisWeekStart).length;
+  const weeklyKpssSessions = kpssData.logs.filter((log) => log.date >= thisWeekStart).length;
+  const reviewedTodayCount =
+    kpssData.reviews.find((entry) => entry.date === today)?.count ?? 0;
 
   const plant = plantStage(progress.completedSessions, progress.plantHealth);
 
   useEffect(() => {
     void (async () => {
-      const [loadedSettings, loadedProgress, loadedTheme, loadedVolume, savedBackgroundId] =
+      const [loadedSettings, loadedProgress, loadedTheme, loadedVolume, savedBackgroundId, loadedKpssData] =
         await Promise.all([
           loadSettings(),
           loadProgress(),
           loadTheme(),
           loadAmbientVolume(),
           loadSelectedBackgroundId(),
+          loadKpssData(),
         ]);
       setSettings(sanitizeSettings(loadedSettings));
       setProgress({ ...loadedProgress, level: levelFromXp(loadedProgress.xp) });
+      setKpssData(loadedKpssData);
       setThemeMode(loadedTheme);
       setAmbientVolume(loadedVolume);
       setSelectedBackgroundId(savedBackgroundId);
@@ -561,6 +658,11 @@ function App() {
   }, [ambientVolume, muted, ready]);
 
   useEffect(() => {
+    if (!ready) return;
+    void saveKpssData(kpssData);
+  }, [kpssData, ready]);
+
+  useEffect(() => {
     if (!ready || quickActionAppliedRef.current) return;
     const quick = new URLSearchParams(window.location.search).get("quick");
     if (!quick) return;
@@ -581,20 +683,31 @@ function App() {
     function handleVisibility() {
       if (!document.hidden || !running || mode !== "focus" || !distractionGuardEnabled) return;
       setDistractionCount((prev) => prev + 1);
-      setQuote("Distraction Guard: You left focus mode. Come back and reclaim momentum.");
+      setQuote(
+        simulationMode
+          ? "Simulation integrity broken: session stopped due to leaving the app."
+          : "Distraction Guard: You left focus mode. Come back and reclaim momentum.",
+      );
       setProgress((prev) => {
-        const damage = bossMode ? 10 : 5;
+        const damage = simulationMode ? 20 : bossMode ? 10 : 5;
         const next = { ...prev, plantHealth: Math.max(0, prev.plantHealth - damage) };
         void saveProgress(next);
         return next;
       });
+      if (simulationMode) {
+        setSimulationMode(false);
+        setBossMode(false);
+        setBossMinutes(null);
+        setRunning(false);
+        void releaseWakeLock();
+      }
       void nudge();
     }
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [running, mode, distractionGuardEnabled, bossMode]);
+  }, [running, mode, distractionGuardEnabled, bossMode, simulationMode]);
 
   async function applyBackground(background: RichBackground) {
     setLoadingBackground(true);
@@ -745,14 +858,22 @@ function App() {
   async function resetPhase() {
     if (mode === "focus" && running && remainingSeconds > 5) {
       setProgress((prev) => {
-        const next = { ...prev, plantHealth: Math.max(0, prev.plantHealth - (bossMode ? 22 : 15)) };
+        const failPenalty = simulationMode ? 25 : bossMode ? 22 : 15;
+        const next = { ...prev, plantHealth: Math.max(0, prev.plantHealth - failPenalty) };
         void saveProgress(next);
         return next;
       });
-      setQuote(bossMode ? "Boss challenge failed. Your tree took heavy damage." : "Focus interrupted. Your plant needs consistency.");
+      setQuote(
+        simulationMode
+          ? "Simulation failed. Exam discipline dropped and plant health decreased."
+          : bossMode
+            ? "Boss challenge failed. Your tree took heavy damage."
+            : "Focus interrupted. Your plant needs consistency.",
+      );
     }
     setBossMode(false);
     setBossMinutes(null);
+    setSimulationMode(false);
     await pauseSession();
     const duration = getDurationByMode(mode, settings);
     setPhaseDuration(duration);
@@ -768,7 +889,8 @@ function App() {
       const baseMinutes = bossMode ? (bossMinutes ?? settings.focusMinutes) : settings.focusMinutes;
       const bossMultiplier = bossMode ? (baseMinutes >= 75 ? 2.6 : 2) : 1;
       const roomBonus = joinedRoom?.bonusXp ?? 0;
-      const gainedXp = Math.round(xpForSession(baseMinutes) * bossMultiplier + roomBonus);
+      const simulationBonus = simulationMode ? 30 : 0;
+      const gainedXp = Math.round(xpForSession(baseMinutes) * bossMultiplier + roomBonus + simulationBonus);
       const updatedRecords = upsertDayRecord(progress.records, today, {
         sessions: 1,
         focusMinutes: baseMinutes,
@@ -786,9 +908,31 @@ function App() {
       };
       setProgress(nextProgress);
       void saveProgress(nextProgress);
+
+      const questions = clampNumber(Math.round(sessionQuestionInput), 0, 300);
+      const correct = clampNumber(Math.round(sessionCorrectInput), 0, questions);
+      const wrong = clampNumber(Math.round(sessionWrongInput), 0, questions - correct);
+      const logItem = {
+        id: generateId("log"),
+        date: today,
+        track: kpssData.goal.track,
+        topic: kpssData.goal.topic,
+        questions,
+        correct,
+        wrong,
+        minutes: baseMinutes,
+        isSimulation: simulationMode,
+      };
+      setKpssData((prev) => ({
+        ...prev,
+        logs: [logItem, ...prev.logs].slice(0, 500),
+      }));
+
       if (bossMode) {
         setBossSessionsWon((prev) => prev + 1);
         setQuote("Boss cleared. Massive XP gained.");
+      } else if (simulationMode) {
+        setQuote("Simulation completed. Exam readiness score increased.");
       } else {
         setQuote(BREAK_QUOTES[Math.floor(Math.random() * BREAK_QUOTES.length)]);
       }
@@ -813,6 +957,9 @@ function App() {
       setBossMode(false);
       setBossMinutes(null);
     }
+    if (simulationMode && mode === "focus") {
+      setSimulationMode(false);
+    }
     await crossfadeToTrack(nextMode, true);
     await rotateBackground();
   }
@@ -827,6 +974,29 @@ function App() {
     setCycleCount(0);
     setBossMode(asBoss);
     setBossMinutes(asBoss ? safeMinutes : null);
+    setSimulationMode(false);
+
+    const duration = safeMinutes * 60;
+    setPhaseDuration(duration);
+    setRemainingSeconds(duration);
+
+    await startFocusWorld("focus");
+  }
+
+  async function startSimulationSession(minutes: number) {
+    const safeMinutes = clampNumber(Math.round(minutes), 40, 140);
+    const nextSettings = sanitizeSettings({ ...settings, focusMinutes: safeMinutes });
+    setSettings(nextSettings);
+    await saveSettings(nextSettings);
+
+    setMode("focus");
+    setCycleCount(0);
+    setBossMode(false);
+    setBossMinutes(null);
+    setSimulationMode(true);
+    setSimulationMinutes(safeMinutes);
+    setDistractionGuardEnabled(true);
+    setQuote("Simulation mode active: stay in-app for full exam discipline.");
 
     const duration = safeMinutes * 60;
     setPhaseDuration(duration);
@@ -882,6 +1052,101 @@ function App() {
 
   function savePlanner() {
     setPlannerOutput(generateAiPlan(goalInput, settings.focusMinutes));
+  }
+
+  function generateKpssCoach() {
+    const weakTopics =
+      dueMistakes.length > 0
+        ? Array.from(new Set(dueMistakes.map((item) => item.topic)))
+        : Array.from(new Set(kpssData.logs.slice(-15).map((log) => log.topic))).slice(0, 3);
+    setKpssCoachOutput(
+      generateKpssCoachPlan({
+        goalInput: kpssData.aiGoalInput,
+        track: kpssData.goal.track,
+        remainingDays: kpssData.remainingDays,
+        currentNet: kpssData.currentNet,
+        weakTopics,
+      }),
+    );
+  }
+
+  function applyKpssTemplate(templateId: string) {
+    const template = KPSS_TEMPLATES.find((item) => item.id === templateId);
+    if (!template) return;
+    setKpssData((prev) => ({
+      ...prev,
+      goal: { ...template.goal },
+    }));
+  }
+
+  function addTrialResult() {
+    const correct = clampNumber(Math.round(trialCorrectInput), 0, 200);
+    const wrong = clampNumber(Math.round(trialWrongInput), 0, 200);
+    const nextTrial = {
+      id: generateId("trial"),
+      date: today,
+      track: kpssData.goal.track,
+      correct,
+      wrong,
+      net: netFromCorrectWrong(correct, wrong),
+    };
+    setKpssData((prev) => ({
+      ...prev,
+      currentNet: nextTrial.net,
+      trials: [nextTrial, ...prev.trials].slice(0, 80),
+    }));
+  }
+
+  function addMistakeItem() {
+    const topic = mistakeTopicInput.trim();
+    const questionRef = mistakeQuestionRefInput.trim();
+    const errorType = mistakeErrorTypeInput.trim();
+    const reason = mistakeReasonInput.trim();
+    if (!topic || !questionRef || !errorType || !reason) return;
+
+    const item = {
+      id: generateId("mistake"),
+      date: today,
+      track: kpssData.goal.track,
+      topic,
+      questionRef,
+      errorType,
+      reason,
+      stage: 0,
+      nextReviewAt: nextReviewDate(0),
+    };
+    setKpssData((prev) => ({
+      ...prev,
+      mistakes: [item, ...prev.mistakes].slice(0, 400),
+    }));
+  }
+
+  function reviewMistake(id: string, success: boolean) {
+    setKpssData((prev) => {
+      const nextMistakes = prev.mistakes.map((item) => {
+        if (item.id !== id) return item;
+        const nextStage = success ? Math.min(3, item.stage + 1) : 0;
+        return {
+          ...item,
+          stage: nextStage,
+          nextReviewAt: nextReviewDate(nextStage),
+        };
+      });
+
+      const reviews = [...prev.reviews];
+      const existing = reviews.find((entry) => entry.date === today);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        reviews.push({ date: today, count: 1 });
+      }
+
+      return {
+        ...prev,
+        mistakes: nextMistakes,
+        reviews,
+      };
+    });
   }
 
   function tapRhythm() {
@@ -1039,6 +1304,11 @@ function App() {
   const questDailyThree = todayRecord.sessions >= 3;
   const questFocus60 = todayRecord.focusMinutes >= 60;
   const questWeekly = weeklySessions >= 20;
+  const dailyTaskQuestionsDone = kpssGoalQuestionGap <= 0;
+  const dailyTaskMinutesDone = kpssGoalMinuteGap <= 0;
+  const dailyTaskReviewDone = reviewedTodayCount >= 2;
+  const weeklyTaskTrialsDone = weeklyTrialsCount >= 3;
+  const weeklyTaskBlocksDone = weeklyKpssSessions >= 7;
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -1157,6 +1427,48 @@ function App() {
               >
                 {exportingVideo ? "Exporting 4K..." : "Export 4K Video"}
               </button>
+            </div>
+
+            <div className="mt-3 rounded-xl border border-white/15 bg-slate-950/30 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-semibold">KPSS Session Input (auto logged on focus complete)</p>
+                {simulationMode && <span className="rounded-md bg-rose-500/80 px-2 py-1 text-xs font-semibold text-white">Simulation ON</span>}
+              </div>
+              <div className="grid gap-2 md:grid-cols-3">
+                <label className="text-xs">
+                  Questions
+                  <input
+                    type="number"
+                    min={0}
+                    max={300}
+                    value={sessionQuestionInput}
+                    onChange={(e) => setSessionQuestionInput(clampNumber(Number(e.target.value), 0, 300))}
+                    className="mt-1 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                  />
+                </label>
+                <label className="text-xs">
+                  Correct
+                  <input
+                    type="number"
+                    min={0}
+                    max={300}
+                    value={sessionCorrectInput}
+                    onChange={(e) => setSessionCorrectInput(clampNumber(Number(e.target.value), 0, 300))}
+                    className="mt-1 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                  />
+                </label>
+                <label className="text-xs">
+                  Wrong
+                  <input
+                    type="number"
+                    min={0}
+                    max={300}
+                    value={sessionWrongInput}
+                    onChange={(e) => setSessionWrongInput(clampNumber(Number(e.target.value), 0, 300))}
+                    className="mt-1 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="mt-3 rounded-xl border border-white/15 bg-slate-950/30 p-3">
@@ -1417,6 +1729,28 @@ function App() {
               </button>
             ))}
           </div>
+          <div className="mt-3 rounded-xl border border-white/15 bg-slate-950/30 p-3">
+            <p className="mb-2 text-sm font-semibold">Simulation Mode (Exam-Like)</p>
+            <div className="flex flex-wrap gap-2">
+              {[75, 100, 130].map((preset) => (
+                <button
+                  key={preset}
+                  onClick={() => setSimulationMinutes(preset)}
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold ${
+                    simulationMinutes === preset ? "bg-indigo-500 text-white" : "bg-white/15"
+                  }`}
+                >
+                  {preset} min
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => void startSimulationSession(simulationMinutes)}
+              className="mt-2 rounded-lg bg-indigo-500/90 px-3 py-2 text-sm font-semibold text-white"
+            >
+              Start Simulation
+            </button>
+          </div>
         </section>
 
         {mode !== "focus" && (
@@ -1573,6 +1907,340 @@ function App() {
           <button onClick={() => void handleSettingsSave()} className="mt-3 rounded-xl bg-violet-500 px-4 py-2 font-semibold">
             Save settings
           </button>
+        </section>
+
+        <section className="glass-card mt-4 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Brain className="h-5 w-5 text-cyan-200" />
+            <h2 className="font-bold">KPSS Goal Module</h2>
+          </div>
+          <p className="text-sm text-slate-300">Set your KPSS target track, topic, and daily objective.</p>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {KPSS_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => applyKpssTemplate(template.id)}
+                className="rounded-lg bg-white/15 px-3 py-2 text-sm font-semibold"
+              >
+                {template.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-4">
+            <label className="text-sm">
+              Track
+              <select
+                value={kpssData.goal.track}
+                onChange={(e) =>
+                  setKpssData((prev) => ({
+                    ...prev,
+                    goal: { ...prev.goal, track: e.target.value as KpssTrack },
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-white/20 bg-slate-950/30 p-2"
+              >
+                <option value="GK-GY">GK-GY</option>
+                <option value="Egitim Bilimleri">Eğitim Bilimleri</option>
+                <option value="OABT">ÖABT</option>
+              </select>
+            </label>
+            <label className="text-sm md:col-span-1">
+              Topic
+              <input
+                value={kpssData.goal.topic}
+                onChange={(e) =>
+                  setKpssData((prev) => ({
+                    ...prev,
+                    goal: { ...prev.goal, topic: e.target.value.slice(0, 80) },
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-white/20 bg-slate-950/30 p-2"
+              />
+            </label>
+            <label className="text-sm">
+              Daily questions
+              <input
+                type="number"
+                min={20}
+                max={400}
+                value={kpssData.goal.dailyQuestions}
+                onChange={(e) =>
+                  setKpssData((prev) => ({
+                    ...prev,
+                    goal: {
+                      ...prev.goal,
+                      dailyQuestions: clampNumber(Number(e.target.value), 20, 400),
+                    },
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-white/20 bg-slate-950/30 p-2"
+              />
+            </label>
+            <label className="text-sm">
+              Daily minutes
+              <input
+                type="number"
+                min={30}
+                max={600}
+                value={kpssData.goal.dailyMinutes}
+                onChange={(e) =>
+                  setKpssData((prev) => ({
+                    ...prev,
+                    goal: {
+                      ...prev.goal,
+                      dailyMinutes: clampNumber(Number(e.target.value), 30, 600),
+                    },
+                  }))
+                }
+                className="mt-1 w-full rounded-lg border border-white/20 bg-slate-950/30 p-2"
+              />
+            </label>
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-white/15 bg-slate-950/30 p-3">
+              <p className="text-sm font-semibold">Daily target progress</p>
+              <p className="mt-1 text-xs text-slate-300">
+                Questions: {todayQuestionsSolved}/{kpssData.goal.dailyQuestions}
+              </p>
+              <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/20">
+                <div
+                  className="h-2 rounded-full bg-cyan-300"
+                  style={{
+                    width: `${clampPercent((todayQuestionsSolved / Math.max(1, kpssData.goal.dailyQuestions)) * 100)}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-slate-300">
+                Minutes: {todayKpssMinutes}/{kpssData.goal.dailyMinutes}
+              </p>
+              <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/20">
+                <div
+                  className="h-2 rounded-full bg-emerald-300"
+                  style={{
+                    width: `${clampPercent((todayKpssMinutes / Math.max(1, kpssData.goal.dailyMinutes)) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/15 bg-slate-950/30 p-3">
+              <p className="text-sm font-semibold">KPSS Task System</p>
+              <p className={`text-xs ${dailyTaskQuestionsDone ? "text-emerald-300" : "text-slate-200"}`}>
+                {dailyTaskQuestionsDone ? "✅" : "⬜"} Daily question target
+              </p>
+              <p className={`text-xs ${dailyTaskMinutesDone ? "text-emerald-300" : "text-slate-200"}`}>
+                {dailyTaskMinutesDone ? "✅" : "⬜"} Daily minute target
+              </p>
+              <p className={`text-xs ${dailyTaskReviewDone ? "text-emerald-300" : "text-slate-200"}`}>
+                {dailyTaskReviewDone ? "✅" : "⬜"} 2 mistake reviews today
+              </p>
+              <p className="mt-2 text-xs font-semibold text-slate-300">Weekly missions</p>
+              <p className={`text-xs ${weeklyTaskTrialsDone ? "text-emerald-300" : "text-slate-200"}`}>
+                {weeklyTaskTrialsDone ? "✅" : "⬜"} 3 trials this week ({weeklyTrialsCount}/3)
+              </p>
+              <p className={`text-xs ${weeklyTaskBlocksDone ? "text-emerald-300" : "text-slate-200"}`}>
+                {weeklyTaskBlocksDone ? "✅" : "⬜"} 7 study blocks this week ({weeklyKpssSessions}/7)
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="glass-card mt-4 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-amber-300" />
+            <h2 className="font-bold">KPSS Net Tracking</h2>
+          </div>
+          <p className="text-sm text-slate-300">
+            Today net: <span className="font-semibold text-white">{todayNet}</span> · Questions: {todayQuestionsSolved} · Correct/Wrong: {todayCorrect}/{todayWrong}
+          </p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-white/15 bg-slate-950/30 p-3">
+              <p className="text-sm font-semibold">Add Trial Result</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <label className="text-xs">
+                  Correct
+                  <input
+                    type="number"
+                    min={0}
+                    max={200}
+                    value={trialCorrectInput}
+                    onChange={(e) => setTrialCorrectInput(clampNumber(Number(e.target.value), 0, 200))}
+                    className="mt-1 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                  />
+                </label>
+                <label className="text-xs">
+                  Wrong
+                  <input
+                    type="number"
+                    min={0}
+                    max={200}
+                    value={trialWrongInput}
+                    onChange={(e) => setTrialWrongInput(clampNumber(Number(e.target.value), 0, 200))}
+                    className="mt-1 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                  />
+                </label>
+              </div>
+              <button onClick={addTrialResult} className="mt-2 rounded-lg bg-amber-500/80 px-3 py-2 text-sm font-semibold text-slate-900">
+                Save trial
+              </button>
+              <p className="mt-2 text-xs text-slate-300">Current trial net preview: {netFromCorrectWrong(trialCorrectInput, trialWrongInput)}</p>
+            </div>
+
+            <div className="rounded-xl border border-white/15 bg-slate-950/30 p-3">
+              <p className="text-sm font-semibold">Recent trial trend</p>
+              <div className="mt-2 max-h-40 space-y-1 overflow-auto text-xs">
+                {kpssData.trials.slice(0, 7).map((trial) => (
+                  <p key={trial.id}>
+                    {trial.date} · {trial.track} · Net {trial.net} ({trial.correct}/{trial.wrong})
+                  </p>
+                ))}
+                {kpssData.trials.length === 0 && <p className="text-slate-300">No trials recorded yet.</p>}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="glass-card mt-4 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Shield className="h-5 w-5 text-emerald-300" />
+            <h2 className="font-bold">Wrong Notebook + Spaced Review</h2>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-white/15 bg-slate-950/30 p-3">
+              <p className="text-sm font-semibold">Add wrong question</p>
+              <input
+                value={mistakeTopicInput}
+                onChange={(e) => setMistakeTopicInput(e.target.value.slice(0, 60))}
+                className="mt-2 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                placeholder="Topic"
+              />
+              <input
+                value={mistakeQuestionRefInput}
+                onChange={(e) => setMistakeQuestionRefInput(e.target.value.slice(0, 80))}
+                className="mt-2 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                placeholder="Question reference"
+              />
+              <input
+                value={mistakeErrorTypeInput}
+                onChange={(e) => setMistakeErrorTypeInput(e.target.value.slice(0, 60))}
+                className="mt-2 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                placeholder="Error type"
+              />
+              <input
+                value={mistakeReasonInput}
+                onChange={(e) => setMistakeReasonInput(e.target.value.slice(0, 120))}
+                className="mt-2 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                placeholder="Why was it wrong?"
+              />
+              <button onClick={addMistakeItem} className="mt-2 rounded-lg bg-emerald-500/80 px-3 py-2 text-sm font-semibold text-slate-900">
+                Add to notebook
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-white/15 bg-slate-950/30 p-3">
+              <p className="text-sm font-semibold">Due reviews today ({dueMistakes.length})</p>
+              <div className="mt-2 max-h-56 space-y-2 overflow-auto text-xs">
+                {dueMistakes.slice(0, 12).map((item) => (
+                  <div key={item.id} className="rounded-lg border border-white/15 p-2">
+                    <p className="font-semibold">{item.topic}</p>
+                    <p className="text-slate-300">{item.questionRef} · {item.errorType}</p>
+                    <p className="text-slate-300">Reason: {item.reason}</p>
+                    <div className="mt-1 flex gap-2">
+                      <button
+                        onClick={() => reviewMistake(item.id, true)}
+                        className="rounded-md bg-emerald-500/70 px-2 py-1 text-[11px] font-semibold text-slate-900"
+                      >
+                        Reviewed ✅
+                      </button>
+                      <button
+                        onClick={() => reviewMistake(item.id, false)}
+                        className="rounded-md bg-rose-500/70 px-2 py-1 text-[11px] font-semibold text-white"
+                      >
+                        Again ↺
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {dueMistakes.length === 0 && <p className="text-slate-300">No due review item today.</p>}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="glass-card mt-4 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Wand2 className="h-5 w-5 text-violet-300" />
+            <h2 className="font-bold">KPSS AI Coach</h2>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="text-sm md:col-span-2">
+              Goal input
+              <textarea
+                value={kpssData.aiGoalInput}
+                onChange={(e) =>
+                  setKpssData((prev) => ({
+                    ...prev,
+                    aiGoalInput: e.target.value.slice(0, 220),
+                  }))
+                }
+                className="mt-1 h-20 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+              />
+            </label>
+            <div className="space-y-2">
+              <label className="text-sm">
+                Remaining days
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={kpssData.remainingDays}
+                  onChange={(e) =>
+                    setKpssData((prev) => ({
+                      ...prev,
+                      remainingDays: clampNumber(Number(e.target.value), 1, 365),
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                />
+              </label>
+              <label className="text-sm">
+                Current net
+                <input
+                  type="number"
+                  min={0}
+                  max={120}
+                  value={kpssData.currentNet}
+                  onChange={(e) =>
+                    setKpssData((prev) => ({
+                      ...prev,
+                      currentNet: clampNumber(Number(e.target.value), 0, 120),
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-white/20 bg-slate-900/60 p-2 text-sm"
+                />
+              </label>
+            </div>
+          </div>
+          <button onClick={generateKpssCoach} className="mt-2 rounded-lg bg-violet-500 px-3 py-2 text-sm font-semibold">
+            Generate KPSS Coach Plan
+          </button>
+          {kpssCoachOutput && (
+            <div className="mt-3 rounded-xl border border-white/15 bg-slate-950/30 p-3 text-sm">
+              <p className="font-semibold">{kpssCoachOutput.summary}</p>
+              {kpssCoachOutput.tasks.map((task) => (
+                <p key={task.title}>
+                  • {task.title} — {task.sessions} sessions ({task.minutes} min)
+                </p>
+              ))}
+              {kpssCoachOutput.recommendedSchedule.map((line) => (
+                <p key={line} className="text-slate-300">
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
         </section>
       </div>
 

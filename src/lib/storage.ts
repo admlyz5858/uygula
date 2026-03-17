@@ -1,5 +1,5 @@
 import { openDB } from "idb";
-import type { AppProgress, ThemeMode, TimerSettings } from "../types";
+import type { AppProgress, KpssData, ThemeMode, TimerSettings } from "../types";
 
 const DB_NAME = "focus-universe-db";
 const STORE_NAME = "kv";
@@ -18,6 +18,22 @@ const DEFAULT_PROGRESS: AppProgress = {
   streakDays: 0,
   plantHealth: 100,
   records: []
+};
+
+const DEFAULT_KPSS_DATA: KpssData = {
+  goal: {
+    track: "GK-GY",
+    topic: "Paragraf + Problem",
+    dailyQuestions: 120,
+    dailyMinutes: 180
+  },
+  logs: [],
+  trials: [],
+  mistakes: [],
+  reviews: [],
+  aiGoalInput: "KPSS'ye 90 gün kaldı. GK-GY netimi 75'e çıkar.",
+  remainingDays: 90,
+  currentNet: 52
 };
 
 const dbPromise = openDB(DB_NAME, 1, {
@@ -77,4 +93,12 @@ export async function loadSelectedBackgroundId(): Promise<string> {
 
 export async function saveSelectedBackgroundId(id: string): Promise<void> {
   return saveValue("backgroundId", id);
+}
+
+export async function loadKpssData(): Promise<KpssData> {
+  return loadValue<KpssData>("kpssData", DEFAULT_KPSS_DATA);
+}
+
+export async function saveKpssData(data: KpssData): Promise<void> {
+  return saveValue("kpssData", data);
 }

@@ -54,3 +54,54 @@ export function generateAiPlan(goalInput: string, focusMinutes = 25): PlannerOut
     recommendedSchedule
   };
 }
+
+export function generateKpssCoachPlan(params: {
+  goalInput: string;
+  track: string;
+  remainingDays: number;
+  currentNet: number;
+  weakTopics: string[];
+}): PlannerOutput {
+  const { goalInput, track, remainingDays, currentNet, weakTopics } = params;
+  const targetHint = goalInput || `${track} netini yükselt`;
+  const urgency = remainingDays <= 45 ? "high" : remainingDays <= 90 ? "medium" : "balanced";
+  const weak = weakTopics.length > 0 ? weakTopics.slice(0, 3) : ["Paragraf", "Problem", "Tarih tekrar"];
+  const netGap = Math.max(0, 85 - currentNet);
+
+  const tasks: PlannerTask[] = [
+    {
+      title: `${track} Çekirdek konu blokları (${weak[0]})`,
+      sessions: urgency === "high" ? 4 : 3,
+      minutes: urgency === "high" ? 200 : 150
+    },
+    {
+      title: `Soru çözüm + hız antrenmanı (${weak[1] ?? "Soru seti"})`,
+      sessions: urgency === "high" ? 5 : 4,
+      minutes: urgency === "high" ? 250 : 200
+    },
+    {
+      title: `Yanlış defteri tekrarları (${weak[2] ?? "Tekrar"})`,
+      sessions: 2,
+      minutes: 100
+    },
+    {
+      title: "Deneme + analiz",
+      sessions: urgency === "high" ? 2 : 1,
+      minutes: urgency === "high" ? 150 : 90
+    }
+  ];
+
+  const recommendedSchedule = [
+    `Current net: ${currentNet}. Estimated gap to 85 net: ~${netGap}.`,
+    "Sabah blok: konu anlatım + mini test, öğleden sonra yoğun soru çözümü.",
+    "Her gün en az 1 yanlış defteri tekrarı ve 1 hız bloğu ekle.",
+    "Haftada en az 2 deneme, deneme sonrası 60 dakikalık analiz zorunlu.",
+    "Zayıf konu sıralaması: " + weak.join(" > ")
+  ];
+
+  return {
+    summary: `${targetHint} için ${remainingDays} gün kaldı. ${urgency.toUpperCase()} yoğunlukta KPSS planı üretildi.`,
+    tasks,
+    recommendedSchedule
+  };
+}
