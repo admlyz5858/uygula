@@ -1,4 +1,4 @@
-const CACHE_NAME = "focus-pomodoro-v3";
+const CACHE_NAME = "marble-race-ultimate-v1";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,12 +6,6 @@ const ASSETS = [
   "./app.js",
   "./manifest.webmanifest",
   "./icon.svg",
-  "./assets/images/autumn.webp",
-  "./assets/images/countryside.webp",
-  "./assets/images/river.webp",
-  "./assets/music/campfire-focus.ogg",
-  "./assets/music/gymnopedie-focus.ogg",
-  "./assets/music/waves-focus.ogg",
 ];
 
 self.addEventListener("install", (event) => {

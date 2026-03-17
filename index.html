@@ -3,124 +3,119 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta id="themeColorMeta" name="theme-color" content="#0f172a" />
+    <meta id="themeColorMeta" name="theme-color" content="#030712" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="stylesheet" href="styles.css" />
-    <title>Mobil Focus Pomodoro</title>
+    <title>Marble Race: Ultimate League</title>
   </head>
   <body>
-    <div class="cinematic-bg" aria-hidden="true">
-      <img id="bgImage" class="bg-image" src="assets/images/autumn.webp" alt="" />
-      <div class="bg-overlay"></div>
-      <div class="floating floating--one"></div>
-      <div class="floating floating--two"></div>
-      <div class="floating floating--three"></div>
-    </div>
-
     <main class="app">
-      <header class="app__header">
-        <div class="header-top">
-          <div>
-            <h1>Focus Pomodoro</h1>
-            <p>Arka plana gömülü görseller + şeffaf arayüz</p>
-            <p id="themeStatus" class="theme-status">Tema: Otomatik</p>
-          </div>
-          <div class="theme-switch" role="group" aria-label="Tema seçimi">
-            <button id="themeAutoBtn" class="btn btn--tiny btn--secondary theme-btn">Oto</button>
-            <button id="themeLightBtn" class="btn btn--tiny btn--secondary theme-btn">Açık</button>
-            <button id="themeDarkBtn" class="btn btn--tiny btn--secondary theme-btn">Koyu</button>
-          </div>
+      <header class="panel panel--header">
+        <div>
+          <h1>Marble Race: Ultimate League</h1>
+          <p>
+            Algodoo tarzı üst düzey simülasyon: Team Race, Territory War, Country Elimination, Tank Arena ve Stage Lottery.
+          </p>
+        </div>
+        <div class="status">
+          <span id="raceClock">00:00.0</span>
+          <span id="raceStateBadge" class="badge badge--idle">Hazır</span>
         </div>
       </header>
 
-      <section class="timer-card">
-        <div class="mode-row">
-          <span id="modeLabel" class="mode-badge mode-badge--focus">Odak</span>
-          <span id="sessionCount" class="session-count">Tamamlanan odak: 0</span>
+      <section class="panel controls-panel">
+        <div class="control-grid">
+          <label>
+            <span>Yarış modu</span>
+            <select id="modeSelect">
+              <option value="team">Team Marble Race</option>
+              <option value="territory">Territory War</option>
+              <option value="elimination">Country Elimination</option>
+              <option value="arena">Weaponized Tank Arena</option>
+              <option value="lottery">Stage Lottery Elimination</option>
+            </select>
+          </label>
+          <label>
+            <span>Misket sayısı</span>
+            <input id="marbleCountInput" type="number" min="12" max="120" value="36" />
+          </label>
+          <label>
+            <span>Tur sayısı</span>
+            <input id="lapsInput" type="number" min="2" max="12" value="5" />
+          </label>
+          <label>
+            <span>Hız profili</span>
+            <select id="speedProfileSelect">
+              <option value="balanced">Balanced League</option>
+              <option value="chaos">Chaos Drift</option>
+              <option value="endurance">Endurance Control</option>
+            </select>
+          </label>
+          <label>
+            <span>Seed (parkur)</span>
+            <input id="seedInput" type="text" value="2026-ultimate-league" />
+          </label>
+          <label>
+            <span>Canlı olay yoğunluğu</span>
+            <input id="intensityInput" type="range" min="1" max="100" value="60" />
+          </label>
         </div>
-
-        <div class="timer-shell">
-          <div id="timerAura" class="timer-aura"></div>
-          <h2 id="timerDisplay" class="timer-display">25:00</h2>
-        </div>
-        <div class="progress-track" aria-hidden="true">
-          <div id="progressBar" class="progress-bar"></div>
-        </div>
-
-        <div class="controls">
-          <button id="startPauseBtn" class="btn btn--primary">Başlat</button>
-          <button id="resetBtn" class="btn btn--secondary">Sıfırla</button>
-          <button id="skipBtn" class="btn btn--ghost">Geç</button>
+        <p id="modeDescription" class="mode-description"></p>
+        <div class="actions">
+          <button id="generateBtn" class="btn btn--secondary">Parkuru Yenile</button>
+          <button id="startPauseBtn" class="btn btn--primary">Yarışı Başlat</button>
+          <button id="resetBtn" class="btn btn--ghost">Yarışı Sıfırla</button>
         </div>
       </section>
 
-      <section class="media-card">
-        <div class="media-head">
-          <h3>Arka plan görselleri</h3>
-          <div class="media-actions">
-            <button id="prevVisualBtn" class="btn btn--tiny btn--secondary">Önceki</button>
-            <button id="nextVisualBtn" class="btn btn--tiny btn--secondary">Sonraki</button>
+      <section class="panel arena-panel">
+        <canvas id="raceCanvas" aria-label="Marble race simülasyon parkuru"></canvas>
+        <div id="lotteryBadge" class="lottery-badge" hidden></div>
+      </section>
+
+      <section class="panel split-panel">
+        <article class="subpanel">
+          <h2>Canlı Sıralama</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Misket</th>
+                  <th>Takım</th>
+                  <th>Durum</th>
+                  <th>Tur</th>
+                  <th>Hız</th>
+                  <th>Puan</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardBody"></tbody>
+            </table>
           </div>
-        </div>
-        <p id="galleryCaption" class="bg-caption">Arka plan: Autumn Scene</p>
+        </article>
+        <article class="subpanel">
+          <h2>Yarış Olayları</h2>
+          <ul id="eventLog" class="event-log"></ul>
+        </article>
       </section>
 
-      <section class="music-card">
-        <h3>Odak müzikleri / ambiyans</h3>
-        <p class="music-subtitle">Telifsiz stok ses arşivi</p>
-        <div class="music-grid">
-          <label>
-            <span>Parça seç</span>
-            <select id="musicSelect"></select>
-          </label>
-          <label>
-            <span>Ses seviyesi</span>
-            <input id="volumeInput" type="range" min="0" max="100" value="45" />
-          </label>
+      <section class="panel metrics-panel">
+        <div class="metric">
+          <span>Aktif Misket</span>
+          <strong id="activeMarblesStat">0</strong>
         </div>
-        <div class="controls controls--music">
-          <button id="musicToggleBtn" class="btn btn--primary">Müziği başlat</button>
-          <button id="musicMuteBtn" class="btn btn--ghost">Sessize al</button>
+        <div class="metric">
+          <span>Elenen</span>
+          <strong id="eliminatedStat">0</strong>
         </div>
-        <p id="trackMeta" class="track-meta"></p>
-        <audio id="ambientPlayer" preload="metadata" loop playsinline></audio>
-      </section>
-
-      <section class="settings-card">
-        <h3>Ayarlar</h3>
-        <div class="settings-grid">
-          <label>
-            <span>Odak (dk)</span>
-            <input id="focusInput" type="number" min="1" max="90" value="25" />
-          </label>
-          <label>
-            <span>Kısa mola (dk)</span>
-            <input id="shortBreakInput" type="number" min="1" max="30" value="5" />
-          </label>
-          <label>
-            <span>Uzun mola (dk)</span>
-            <input id="longBreakInput" type="number" min="5" max="60" value="15" />
-          </label>
-          <label>
-            <span>Uzun mola döngüsü</span>
-            <input id="cycleInput" type="number" min="2" max="8" value="4" />
-          </label>
+        <div class="metric">
+          <span>Checkpoint Ele Geçirme</span>
+          <strong id="captureStat">0</strong>
         </div>
-        <button id="saveSettingsBtn" class="btn btn--secondary btn--full">Ayarları kaydet</button>
-      </section>
-
-      <section class="tips-card">
-        <h3>Hızlı ipucu</h3>
-        <ul>
-          <li>Her odak seansında tek bir göreve odaklan.</li>
-          <li>Bildirimleri kapatıp telefonu sessize al.</li>
-          <li>Molada ayağa kalkıp kısa yürüyüş yap.</li>
-        </ul>
-      </section>
-
-      <section class="credits-card">
-        <h3>Medya kaynakları</h3>
-        <p>Görseller ve müzikler Wikimedia Commons üzerinden, telifsiz / açık lisanslı stok içeriklerdir.</p>
+        <div class="metric">
+          <span>Arena Hasar Olayı</span>
+          <strong id="damageStat">0</strong>
+        </div>
       </section>
     </main>
 

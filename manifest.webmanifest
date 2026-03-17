@@ -1,13 +1,13 @@
 {
-  "name": "Mobil Focus Pomodoro",
-  "short_name": "Pomodoro",
+  "name": "Marble Race Ultimate League",
+  "short_name": "MarbleRace",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#4f46e5",
+  "background_color": "#030712",
+  "theme_color": "#0f172a",
   "lang": "tr",
-  "orientation": "portrait",
-  "description": "Mobil uyumlu odak ve mola zamanlayıcısı.",
+  "orientation": "landscape",
+  "description": "Takim, territory, elimination, arena ve stage lottery modlari iceren gelismis marble race oyunu.",
   "icons": [
     {
       "src": "icon.svg",
