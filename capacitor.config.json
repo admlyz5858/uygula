@@ -1,6 +1,6 @@
 {
-  "appId": "com.admlyz.parkuryarislari",
-  "appName": "Parkur Yarışları",
+  "appId": "com.admlyz.bilyeyarislari",
+  "appName": "Bilye Yarışları",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

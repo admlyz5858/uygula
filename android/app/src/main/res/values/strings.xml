@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Parkur Yarışları</string>
-    <string name="title_activity_main">Parkur Yarışları</string>
-    <string name="package_name">com.admlyz.parkuryarislari</string>
-    <string name="custom_url_scheme">com.admlyz.parkuryarislari</string>
+    <string name="app_name">Bilye Yarışları</string>
+    <string name="title_activity_main">Bilye Yarışları</string>
+    <string name="package_name">com.admlyz.bilyeyarislari</string>
+    <string name="custom_url_scheme">com.admlyz.bilyeyarislari</string>
 </resources>

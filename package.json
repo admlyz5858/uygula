@@ -1,7 +1,7 @@
 {
-  "name": "parkur-yarislari",
-  "version": "1.0.0",
-  "description": "3D Parkur Yarışları - Three.js tabanlı parkur yarış oyunu. YouTube için yarışlar kaydedilebilir.",
+  "name": "bilye-yarislari",
+  "version": "2.0.0",
+  "description": "2D Bilye Yarışları - Canvas tabanlı bilye (marble) yarış oyunu. YouTube için yarışlar kaydedilebilir.",
   "main": "js/main.js",
   "scripts": {
     "start": "npx http-server -p 8080 -o",
@@ -13,13 +13,9 @@
     "type": "git",
     "url": "git+https://github.com/admlyz5858/uygula.git"
   },
-  "keywords": ["parkour", "race", "3d", "threejs", "game"],
+  "keywords": ["marble", "race", "2d", "canvas", "game", "bilye"],
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/admlyz5858/uygula/issues"
-  },
-  "homepage": "https://github.com/admlyz5858/uygula#readme",
   "dependencies": {
     "@capacitor/android": "^8.2.0",
     "@capacitor/cli": "^8.2.0",
