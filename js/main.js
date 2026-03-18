@@ -6,6 +6,7 @@
 const CFG = {
     WORLD_W: 800,
     MARBLE_R: 12,
+    marbleRadius(count) { return count <= 16 ? 12 : count <= 40 ? 9 : count <= 70 ? 7 : 5; },
     GRAVITY: 520,
     FRICTION: 0.997,
     WALL_BOUNCE: 0.55,
@@ -13,6 +14,7 @@ const CFG = {
     MAX_VEL: 900,
     SUB_STEPS: 4,
     FINISH_DELAY: 3,
+    ELIM_FINISH_DELAY: 1.5,
     COUNTDOWN_SECS: 3,
     SPEED_VAR: 0.08,
     DEFAULT_COUNT: 8,
@@ -435,6 +437,63 @@ const MARBLE_DB = [
     { name: 'Tarçın', color: '#D2691E', speed: 1.05, weight: 1.1, bounce: 0.95, luck: 1.0 },
     { name: 'Leylak', color: '#C8A2C8', speed: 0.95, weight: 0.95, bounce: 1.15, luck: 1.1 },
     { name: 'Kobalt', color: '#0047AB', speed: 1.15, weight: 1.05, bounce: 0.95, luck: 0.9 },
+    { name: 'Kadife', color: '#800080', speed: 1.0, weight: 1.05, bounce: 1.0, luck: 1.1 },
+    { name: 'Karamel', color: '#FFD59A', speed: 1.05, weight: 1.0, bounce: 0.95, luck: 1.1 },
+    { name: 'Petrol', color: '#006666', speed: 1.1, weight: 1.1, bounce: 0.9, luck: 0.95 },
+    { name: 'Kayısı', color: '#FBCEB1', speed: 0.95, weight: 0.9, bounce: 1.1, luck: 1.2 },
+    { name: 'Antrasit', color: '#293133', speed: 1.1, weight: 1.2, bounce: 0.8, luck: 0.95 },
+    { name: 'Bej', color: '#F5F5DC', speed: 1.0, weight: 0.95, bounce: 1.05, luck: 1.15 },
+    { name: 'Turkuaz 2', color: '#30D5C8', speed: 1.15, weight: 0.9, bounce: 1.05, luck: 0.95 },
+    { name: 'Yavruağzı', color: '#E8ADAA', speed: 0.95, weight: 0.95, bounce: 1.1, luck: 1.15 },
+    { name: 'Zeytin', color: '#808000', speed: 1.0, weight: 1.15, bounce: 0.9, luck: 1.0 },
+    { name: 'Fuşya', color: '#FF00FF', speed: 1.2, weight: 0.85, bounce: 1.1, luck: 0.9 },
+    { name: 'Mürdüm', color: '#660066', speed: 1.05, weight: 1.1, bounce: 0.95, luck: 1.0 },
+    { name: 'Fildişi', color: '#FFFFF0', speed: 1.0, weight: 0.9, bounce: 1.05, luck: 1.2 },
+    { name: 'Gece Mavisi', color: '#191970', speed: 1.15, weight: 1.05, bounce: 0.9, luck: 0.95 },
+    { name: 'Açık Yeşil', color: '#90EE90', speed: 1.05, weight: 0.95, bounce: 1.1, luck: 1.05 },
+    { name: 'Koyu Kırmızı', color: '#8B0000', speed: 1.1, weight: 1.15, bounce: 0.85, luck: 0.95 },
+    { name: 'Göl Mavisi', color: '#4682B4', speed: 1.0, weight: 1.05, bounce: 1.0, luck: 1.1 },
+    { name: 'Pas Rengi', color: '#B7410E', speed: 0.95, weight: 1.2, bounce: 0.85, luck: 1.05 },
+    { name: 'Camgöbeği', color: '#00FFFF', speed: 1.2, weight: 0.85, bounce: 1.1, luck: 0.9 },
+    { name: 'Ten Rengi', color: '#FFE4C4', speed: 1.0, weight: 0.95, bounce: 1.0, luck: 1.2 },
+    { name: 'Çelik', color: '#71797E', speed: 1.05, weight: 1.15, bounce: 0.9, luck: 0.95 },
+    { name: 'Parlak Turuncu', color: '#FF5F15', speed: 1.2, weight: 0.95, bounce: 1.0, luck: 0.9 },
+    { name: 'Koyu Yeşil', color: '#006400', speed: 0.95, weight: 1.15, bounce: 0.9, luck: 1.15 },
+    { name: 'Gri Mavi', color: '#6699CC', speed: 1.05, weight: 1.0, bounce: 1.05, luck: 1.05 },
+    { name: 'Şarap', color: '#722F37', speed: 1.0, weight: 1.1, bounce: 0.9, luck: 1.1 },
+    { name: 'Fosfor', color: '#CCFF00', speed: 1.25, weight: 0.8, bounce: 1.05, luck: 0.8 },
+    { name: 'Bakır 2', color: '#B87333', speed: 0.95, weight: 1.2, bounce: 0.85, luck: 1.1 },
+    { name: 'Buz Mavi', color: '#A5F2F3', speed: 1.1, weight: 0.9, bounce: 1.1, luck: 1.0 },
+    { name: 'Çikolata', color: '#7B3F00', speed: 1.0, weight: 1.15, bounce: 0.9, luck: 1.0 },
+    { name: 'Somon', color: '#FA8072', speed: 1.05, weight: 0.95, bounce: 1.05, luck: 1.1 },
+    { name: 'Menekşe', color: '#8B008B', speed: 1.0, weight: 1.0, bounce: 1.1, luck: 1.05 },
+    { name: 'Kestane', color: '#954535', speed: 0.95, weight: 1.15, bounce: 0.9, luck: 1.1 },
+    { name: 'Ay Işığı', color: '#D6E6FF', speed: 1.1, weight: 0.85, bounce: 1.1, luck: 1.05 },
+    { name: 'Yanık Turuncu', color: '#CC5500', speed: 1.15, weight: 1.05, bounce: 0.95, luck: 0.9 },
+    { name: 'Su Yeşili', color: '#7FFFD4', speed: 1.05, weight: 0.95, bounce: 1.1, luck: 1.05 },
+    { name: 'Grafit', color: '#383838', speed: 1.1, weight: 1.2, bounce: 0.8, luck: 0.9 },
+    { name: 'Parlak Pembe', color: '#FF69B4', speed: 1.15, weight: 0.85, bounce: 1.1, luck: 0.95 },
+    { name: 'Çam Yeşili', color: '#01796F', speed: 0.95, weight: 1.1, bounce: 0.95, luck: 1.15 },
+    { name: 'Gün Batımı', color: '#FAD6A5', speed: 1.05, weight: 0.95, bounce: 1.05, luck: 1.1 },
+    { name: 'Safran', color: '#F4C430', speed: 1.1, weight: 1.0, bounce: 1.0, luck: 1.0 },
+    { name: 'Lacivert', color: '#000080', speed: 1.05, weight: 1.1, bounce: 0.9, luck: 1.0 },
+    { name: 'Nar', color: '#C41E3A', speed: 1.15, weight: 1.0, bounce: 1.0, luck: 0.9 },
+    { name: 'Turkuaz 3', color: '#48D1CC', speed: 1.1, weight: 0.9, bounce: 1.1, luck: 1.0 },
+    { name: 'Tuğla', color: '#CB4154', speed: 1.0, weight: 1.15, bounce: 0.85, luck: 1.05 },
+    { name: 'Altın Sarısı', color: '#DAA520', speed: 1.05, weight: 1.05, bounce: 0.95, luck: 1.1 },
+    { name: 'Zümrüt 2', color: '#046307', speed: 0.9, weight: 1.1, bounce: 0.95, luck: 1.2 },
+    { name: 'Gümüş 2', color: '#AAA9AD', speed: 1.1, weight: 1.0, bounce: 1.0, luck: 1.0 },
+    { name: 'Erik', color: '#8E4585', speed: 1.0, weight: 1.05, bounce: 1.05, luck: 1.05 },
+    { name: 'Limon Sarısı', color: '#FDFF00', speed: 1.2, weight: 0.85, bounce: 1.05, luck: 0.9 },
+    { name: 'Okyanus', color: '#0077BE', speed: 1.05, weight: 1.05, bounce: 1.0, luck: 1.05 },
+    { name: 'Alev Kırmızı', color: '#E25822', speed: 1.2, weight: 1.0, bounce: 0.95, luck: 0.85 },
+    { name: 'Nane', color: '#98FF98', speed: 1.0, weight: 0.9, bounce: 1.15, luck: 1.1 },
+    { name: 'Kömür', color: '#36454F', speed: 1.05, weight: 1.2, bounce: 0.8, luck: 1.0 },
+    { name: 'Şeker Pembe', color: '#FF1493', speed: 1.15, weight: 0.85, bounce: 1.1, luck: 0.95 },
+    { name: 'Yosun', color: '#8A9A5B', speed: 0.9, weight: 1.1, bounce: 0.95, luck: 1.2 },
+    { name: 'Volkan', color: '#CF1020', speed: 1.25, weight: 1.1, bounce: 0.85, luck: 0.75 },
+    { name: 'Amber', color: '#FFBF00', speed: 1.05, weight: 1.05, bounce: 1.0, luck: 1.05 },
+    { name: 'Patlıcan', color: '#614051', speed: 1.0, weight: 1.1, bounce: 0.95, luck: 1.1 },
 ];
 
 // ============================================================
@@ -651,7 +710,7 @@ class Marble {
         this.weight = data.weight;
         this.bounciness = data.bounce;
         this.luck = data.luck;
-        this.r = CFG.MARBLE_R;
+        this.r = CFG.marbleRadius(total);
         this.x = 0; this.y = 0;
         this.vx = 0; this.vy = 0;
         this.finished = false;
@@ -665,12 +724,12 @@ class Marble {
     placeAtStart(index, total, path) {
         const bounds = getTrackBounds(path, 30);
         const w = bounds.r - bounds.l;
-        const cols = Math.min(total, 4);
-        const rows = Math.ceil(total / cols);
+        const r = this.r;
+        const cols = Math.min(total, Math.max(4, Math.floor(w / (r * 2.8))));
         const col = index % cols;
         const row = Math.floor(index / cols);
         this.x = bounds.l + (col + 1) * (w / (cols + 1));
-        this.y = 30 + row * (CFG.MARBLE_R * 3);
+        this.y = 30 + row * (r * 2.8);
         this.vx = 0; this.vy = 0;
     }
 
@@ -1143,8 +1202,8 @@ class Game {
         this.elimination.on = true;
         this.elimination.round = 0;
         this.elimination.elimPerRound = 1;
-        this.selectedCount = 12;
-        this.selectedMarbles = shuffle(MARBLE_DB).slice(0, 12);
+        this.selectedCount = MARBLE_DB.length;
+        this.selectedMarbles = shuffle(MARBLE_DB);
         this.elimination.survivors = [...this.selectedMarbles];
         this.elimination.eliminated = [];
         this.selectedTrack = TRACKS[Math.floor(Math.random() * TRACKS.length)];
@@ -1178,19 +1237,18 @@ class Game {
         setTimeout(() => banner.classList.add('hidden'), 2500);
 
         if (this.elimination.survivors.length <= 1) {
-            // Winner!
             setTimeout(() => {
                 this.elimination.on = false;
                 this.showResults();
             }, 3000);
         } else {
-            // Next round after delay
+            const delay = this.elimination.survivors.length > 20 ? 2000 : 3500;
             setTimeout(() => {
                 this.selectedMarbles = this.elimination.survivors;
                 this.selectedCount = this.elimination.survivors.length;
                 this.selectedTrack = TRACKS[Math.floor(Math.random() * TRACKS.length)];
                 this.startRace();
-            }, 3500);
+            }, delay);
         }
     }
 
@@ -1309,7 +1367,8 @@ class Game {
         const elimInfo = document.getElementById('elim-info');
         if (this.elimination.on) {
             elimInfo.classList.remove('hidden');
-            document.getElementById('elim-round-text').textContent = `Tur: ${this.elimination.round + 1}`;
+            const totalRounds = this.elimination.survivors.length + this.elimination.eliminated.length - 1;
+            document.getElementById('elim-round-text').textContent = `Bölüm: ${this.elimination.round + 1} / ${totalRounds}`;
             document.getElementById('elim-remaining-text').textContent = `Kalan: ${this.elimination.survivors.length} bilye`;
         } else {
             elimInfo.classList.add('hidden');
@@ -1515,7 +1574,7 @@ class Game {
             // All finished?
             if (this.marbles.every(m => m.finished) && !this.raceFinished) {
                 this.raceFinished = true;
-                this.finishTimer = CFG.FINISH_DELAY;
+                this.finishTimer = this.elimination.on ? CFG.ELIM_FINISH_DELAY : CFG.FINISH_DELAY;
             }
             if (this.raceFinished) {
                 this.finishTimer -= sDt;
