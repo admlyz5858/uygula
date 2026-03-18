@@ -101,133 +101,290 @@ function buildTrackPath(sections) {
 }
 
 const TRACKS = [
-    {
-        id: 'classic', name: 'Klasik Yarış',
-        desc: 'Basit ve eğlenceli bir parkur. Yeni başlayanlar için ideal.',
-        difficulty: 1, lengthLabel: 'Kısa',
-        bg1: '#0a0a2e', bg2: '#162050', wallColor: '#4a90d9', trackColor: '#1a2a4e',
-        get data() {
-            return buildTrackPath([
-                { type: 'straight', len: 120, l: 200, r: 600 },
-                { type: 'taper', len: 200, l1: 200, r1: 600, l2: 280, r2: 520 },
-                { type: 'straight', len: 100, l: 280, r: 520 },
-                { type: 'pegs', rows: 5, cols: 6, spacingX: 45, spacingY: 50, startX: 280, startY: 460, pegR: 8 },
-                { type: 'taper', len: 150, l1: 280, r1: 520, l2: 200, r2: 600 },
-                { type: 'straight', len: 80, l: 200, r: 600 },
-                { type: 'bumpers', list: [{ x: 320, y: 780 }, { x: 480, y: 780 }, { x: 400, y: 850, r: 28 }] },
-                { type: 'straight', len: 200, l: 200, r: 600 },
-                { type: 'curve', len: 400, l: 200, r: 600, amp: 80, periods: 2 },
-                { type: 'taper', len: 200, l1: 200, r1: 600, l2: 320, r2: 480 },
-                { type: 'straight', len: 100, l: 320, r: 480 },
-                { type: 'taper', len: 150, l1: 320, r1: 480, l2: 200, r2: 600 },
-                { type: 'straight', len: 250, l: 200, r: 600 },
-            ]);
-        }
+    // 1) Klasik Düz İniş
+    { id: 'classic', name: 'Klasik Düz İniş', desc: 'Basit düz parkur, birkaç tampon. Başlangıç seviyesi.', difficulty: 1, lengthLabel: 'Kısa',
+      bg1: '#0a0a2e', bg2: '#162050', wallColor: '#4a90d9', trackColor: '#1a2a4e',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 120, l: 200, r: 600 },
+        { type: 'taper', len: 180, l1: 200, r1: 600, l2: 260, r2: 540 },
+        { type: 'straight', len: 150, l: 260, r: 540 },
+        { type: 'bumpers', list: [{ x: 350, y: 490 }, { x: 450, y: 490 }] },
+        { type: 'taper', len: 150, l1: 260, r1: 540, l2: 200, r2: 600 },
+        { type: 'straight', len: 200, l: 200, r: 600 },
+        { type: 'bumpers', list: [{ x: 300, y: 850 }, { x: 500, y: 850 }, { x: 400, y: 920, r: 25 }] },
+        { type: 'straight', len: 350, l: 200, r: 600 },
+      ]); }
     },
-    {
-        id: 'zigzag', name: 'Çılgın Zikzak',
-        desc: 'Keskin virajlar ve dar geçitler. Çevik bilyeler avantajlı!',
-        difficulty: 3, lengthLabel: 'Orta',
-        bg1: '#1a0a0a', bg2: '#3a1525', wallColor: '#d94a7a', trackColor: '#2a1020',
-        get data() {
-            return buildTrackPath([
-                { type: 'straight', len: 100, l: 200, r: 600 },
-                { type: 'zigzag', len: 600, amp: 130, segs: 6, baseL: 250, baseR: 550 },
-                { type: 'taper', len: 100, l1: 250, r1: 550, l2: 300, r2: 500 },
-                { type: 'zigzag', len: 500, amp: 100, segs: 5, baseL: 300, baseR: 500 },
-                { type: 'taper', len: 100, l1: 300, r1: 500, l2: 200, r2: 600 },
-                { type: 'bumpers', list: [{ x: 300, y: 1450 }, { x: 500, y: 1450 }, { x: 400, y: 1520, r: 26 }] },
-                { type: 'straight', len: 200, l: 200, r: 600 },
-                { type: 'zigzag', len: 400, amp: 150, segs: 4, baseL: 250, baseR: 550 },
-                { type: 'straight', len: 250, l: 200, r: 600 },
-            ]);
-        }
+    // 2) Plinko Tahtası - tam Pachinko stili
+    { id: 'plinko', name: 'Plinko Tahtası', desc: 'Dev Plinko/Pachinko tahtası! Tamamen şansa dayalı.', difficulty: 2, lengthLabel: 'Orta',
+      bg1: '#0a1a0a', bg2: '#153020', wallColor: '#4ad95a', trackColor: '#102a15',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 130, r: 670 },
+        { type: 'pegs', rows: 10, cols: 10, spacingX: 52, spacingY: 52, startX: 155, startY: 110, pegR: 8 },
+        { type: 'straight', len: 600, l: 130, r: 670 },
+        { type: 'taper', len: 100, l1: 130, r1: 670, l2: 250, r2: 550 },
+        { type: 'straight', len: 60, l: 250, r: 550 },
+        { type: 'taper', len: 100, l1: 250, r1: 550, l2: 130, r2: 670 },
+        { type: 'pegs', rows: 8, cols: 10, spacingX: 52, spacingY: 52, startX: 155, startY: 880, pegR: 9 },
+        { type: 'straight', len: 550, l: 130, r: 670 },
+        { type: 'straight', len: 200, l: 130, r: 670 },
+      ]); }
     },
-    {
-        id: 'plinko', name: 'Engel Cehennemi',
-        desc: 'Çiviler, tamponlar ve engeller! Şans faktörü yüksek.',
-        difficulty: 4, lengthLabel: 'Orta',
-        bg1: '#0a1a0a', bg2: '#153020', wallColor: '#4ad95a', trackColor: '#102a15',
-        get data() {
-            return buildTrackPath([
-                { type: 'straight', len: 100, l: 150, r: 650 },
-                { type: 'pegs', rows: 8, cols: 9, spacingX: 55, spacingY: 55, startX: 170, startY: 130, pegR: 9 },
-                { type: 'straight', len: 550, l: 150, r: 650 },
-                { type: 'bumpers', list: [
-                    { x: 250, y: 720 }, { x: 400, y: 700, r: 30 }, { x: 550, y: 720 },
-                    { x: 300, y: 800 }, { x: 500, y: 800 },
-                ] },
-                { type: 'straight', len: 300, l: 150, r: 650 },
-                { type: 'pegs', rows: 6, cols: 8, spacingX: 60, spacingY: 50, startX: 175, startY: 1050, pegR: 10 },
-                { type: 'straight', len: 400, l: 150, r: 650 },
-                { type: 'bars', list: [
-                    { x1: 200, y1: 1500, x2: 350, y2: 1530 },
-                    { x1: 450, y1: 1530, x2: 600, y2: 1500 },
-                    { x1: 250, y1: 1600, x2: 550, y2: 1620 },
-                ] },
-                { type: 'taper', len: 150, l1: 150, r1: 650, l2: 250, r2: 550 },
-                { type: 'straight', len: 100, l: 250, r: 550 },
-                { type: 'taper', len: 100, l1: 250, r1: 550, l2: 150, r2: 650 },
-                { type: 'straight', len: 300, l: 150, r: 650 },
-            ]);
-        }
+    // 3) Kum Saati (Hourglass) - iki kez daralan huni
+    { id: 'hourglass', name: 'Kum Saati', desc: 'Çift huni! Kum saati şeklinde daralıp genişler.', difficulty: 3, lengthLabel: 'Orta',
+      bg1: '#1a1a00', bg2: '#2a2a10', wallColor: '#d9b44a', trackColor: '#2a2510',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 130, r: 670 },
+        { type: 'funnel', len: 350, l1: 130, r1: 670, lm: 360, rm: 440, l2: 130, r2: 670 },
+        { type: 'straight', len: 60, l: 130, r: 670 },
+        { type: 'bumpers', list: [{ x: 300, y: 530 }, { x: 500, y: 530 }] },
+        { type: 'funnel', len: 350, l1: 130, r1: 670, lm: 350, rm: 450, l2: 130, r2: 670 },
+        { type: 'pegs', rows: 4, cols: 8, spacingX: 60, spacingY: 45, startX: 165, startY: 860, pegR: 7 },
+        { type: 'straight', len: 250, l: 130, r: 670 },
+        { type: 'funnel', len: 300, l1: 130, r1: 670, lm: 370, rm: 430, l2: 130, r2: 670 },
+        { type: 'straight', len: 250, l: 130, r: 670 },
+      ]); }
     },
-    {
-        id: 'funnels', name: 'Dev Huni',
-        desc: 'Daralan ve genişleyen kanallar. Sıkışma garantili!',
-        difficulty: 3, lengthLabel: 'Uzun',
-        bg1: '#1a1a00', bg2: '#2a2a10', wallColor: '#d9b44a', trackColor: '#2a2510',
-        get data() {
-            return buildTrackPath([
-                { type: 'straight', len: 100, l: 150, r: 650 },
-                { type: 'funnel', len: 300, l1: 150, r1: 650, lm: 340, rm: 460, l2: 150, r2: 650 },
-                { type: 'straight', len: 100, l: 150, r: 650 },
-                { type: 'bumpers', list: [{ x: 300, y: 550 }, { x: 500, y: 550 }, { x: 400, y: 620, r: 25 }] },
-                { type: 'funnel', len: 400, l1: 150, r1: 650, lm: 360, rm: 440, l2: 200, r2: 600 },
-                { type: 'pegs', rows: 4, cols: 7, spacingX: 55, spacingY: 50, startX: 220, startY: 1050, pegR: 8 },
-                { type: 'straight', len: 300, l: 200, r: 600 },
-                { type: 'funnel', len: 300, l1: 200, r1: 600, lm: 350, rm: 450, l2: 200, r2: 600 },
-                { type: 'curve', len: 300, l: 200, r: 600, amp: 60, periods: 2 },
-                { type: 'funnel', len: 250, l1: 200, r1: 600, lm: 340, rm: 460, l2: 150, r2: 650 },
-                { type: 'straight', len: 300, l: 150, r: 650 },
-            ]);
-        }
+    // 4) Yılan Yolu - sıkı zikzak
+    { id: 'snake', name: 'Yılan Yolu', desc: 'Sıkı zikzak geçitler. Duvardan duvara!', difficulty: 3, lengthLabel: 'Orta',
+      bg1: '#1a0a0a', bg2: '#3a1525', wallColor: '#d94a7a', trackColor: '#2a1020',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 180, r: 620 },
+        { type: 'zigzag', len: 700, amp: 140, segs: 7, baseL: 220, baseR: 580 },
+        { type: 'straight', len: 60, l: 180, r: 620 },
+        { type: 'bumpers', list: [{ x: 300, y: 870 }, { x: 500, y: 870 }] },
+        { type: 'zigzag', len: 600, amp: 120, segs: 6, baseL: 240, baseR: 560 },
+        { type: 'straight', len: 250, l: 180, r: 620 },
+      ]); }
     },
-    {
-        id: 'mega', name: 'Mega Parkur',
-        desc: 'En uzun ve en zorlu parkur! Her şey var.',
-        difficulty: 5, lengthLabel: 'Çok Uzun',
-        bg1: '#0a0020', bg2: '#200040', wallColor: '#b04ad9', trackColor: '#150030',
-        get data() {
-            return buildTrackPath([
-                { type: 'straight', len: 100, l: 150, r: 650 },
-                { type: 'taper', len: 200, l1: 150, r1: 650, l2: 250, r2: 550 },
-                { type: 'pegs', rows: 5, cols: 6, spacingX: 50, spacingY: 50, startX: 260, startY: 320, pegR: 8 },
-                { type: 'straight', len: 350, l: 250, r: 550 },
-                { type: 'taper', len: 100, l1: 250, r1: 550, l2: 150, r2: 650 },
-                { type: 'zigzag', len: 500, amp: 120, segs: 5, baseL: 200, baseR: 600 },
-                { type: 'bumpers', list: [
-                    { x: 280, y: 1130 }, { x: 400, y: 1100, r: 30 }, { x: 520, y: 1130 },
-                ] },
-                { type: 'straight', len: 200, l: 150, r: 650 },
-                { type: 'funnel', len: 350, l1: 150, r1: 650, lm: 350, rm: 450, l2: 150, r2: 650 },
-                { type: 'pegs', rows: 6, cols: 8, spacingX: 58, spacingY: 48, startX: 175, startY: 1700, pegR: 9 },
-                { type: 'straight', len: 400, l: 150, r: 650 },
-                { type: 'bars', list: [
-                    { x1: 200, y1: 2150, x2: 380, y2: 2180 },
-                    { x1: 420, y1: 2180, x2: 600, y2: 2150 },
-                ] },
-                { type: 'curve', len: 400, l: 150, r: 650, amp: 100, periods: 2 },
-                { type: 'funnel', len: 250, l1: 150, r1: 650, lm: 340, rm: 460, l2: 200, r2: 600 },
-                { type: 'zigzag', len: 400, amp: 80, segs: 4, baseL: 250, baseR: 550 },
-                { type: 'straight', len: 200, l: 200, r: 600 },
-                { type: 'bumpers', list: [
-                    { x: 300, y: 3470, r: 20 }, { x: 400, y: 3440, r: 20 }, { x: 500, y: 3470, r: 20 },
-                ] },
-                { type: 'taper', len: 150, l1: 200, r1: 600, l2: 150, r2: 650 },
-                { type: 'straight', len: 300, l: 150, r: 650 },
-            ]);
-        }
+    // 5) Tampon Arenası - tamponlarla dolu alan
+    { id: 'bumper_arena', name: 'Tampon Arenası', desc: 'Her yerde tamponlar! Kaotik sıçramalar.', difficulty: 4, lengthLabel: 'Orta',
+      bg1: '#1a0020', bg2: '#300040', wallColor: '#e04ae9', trackColor: '#1a0030',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 150, r: 650 },
+        { type: 'bumpers', list: [
+          { x: 250, y: 120 }, { x: 400, y: 140, r: 28 }, { x: 550, y: 120 },
+          { x: 200, y: 230 }, { x: 350, y: 250 }, { x: 500, y: 230 }, { x: 600, y: 260 },
+        ]},
+        { type: 'straight', len: 300, l: 150, r: 650 },
+        { type: 'bumpers', list: [
+          { x: 250, y: 420 }, { x: 400, y: 400, r: 30 }, { x: 550, y: 420 },
+          { x: 300, y: 520 }, { x: 500, y: 520 },
+          { x: 200, y: 600 }, { x: 400, y: 620, r: 26 }, { x: 600, y: 600 },
+        ]},
+        { type: 'straight', len: 400, l: 150, r: 650 },
+        { type: 'taper', len: 150, l1: 150, r1: 650, l2: 300, r2: 500 },
+        { type: 'bumpers', list: [{ x: 400, y: 930, r: 20 }] },
+        { type: 'taper', len: 150, l1: 300, r1: 500, l2: 150, r2: 650 },
+        { type: 'bumpers', list: [
+          { x: 250, y: 1100 }, { x: 400, y: 1080, r: 28 }, { x: 550, y: 1100 },
+          { x: 300, y: 1180 }, { x: 500, y: 1180 },
+        ]},
+        { type: 'straight', len: 400, l: 150, r: 650 },
+      ]); }
+    },
+    // 6) Merdiven - basamaklı düşüşler
+    { id: 'stairs', name: 'Merdiven Parkuru', desc: 'Basamak basamak iniş! Daralan ve genişleyen basamaklar.', difficulty: 2, lengthLabel: 'Orta',
+      bg1: '#0a0a1e', bg2: '#101840', wallColor: '#6080d0', trackColor: '#0e1230',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 200, r: 600 },
+        { type: 'taper', len: 60, l1: 200, r1: 600, l2: 280, r2: 520 },
+        { type: 'straight', len: 100, l: 280, r: 520 },
+        { type: 'taper', len: 60, l1: 280, r1: 520, l2: 180, r2: 620 },
+        { type: 'straight', len: 100, l: 180, r: 620 },
+        { type: 'taper', len: 60, l1: 180, r1: 620, l2: 300, r2: 500 },
+        { type: 'straight', len: 100, l: 300, r: 500 },
+        { type: 'taper', len: 60, l1: 300, r1: 500, l2: 160, r2: 640 },
+        { type: 'straight', len: 100, l: 160, r: 640 },
+        { type: 'bumpers', list: [{ x: 300, y: 770 }, { x: 500, y: 770 }] },
+        { type: 'taper', len: 60, l1: 160, r1: 640, l2: 320, r2: 480 },
+        { type: 'straight', len: 100, l: 320, r: 480 },
+        { type: 'taper', len: 60, l1: 320, r1: 480, l2: 150, r2: 650 },
+        { type: 'straight', len: 100, l: 150, r: 650 },
+        { type: 'taper', len: 60, l1: 150, r1: 650, l2: 280, r2: 520 },
+        { type: 'straight', len: 100, l: 280, r: 520 },
+        { type: 'taper', len: 100, l1: 280, r1: 520, l2: 200, r2: 600 },
+        { type: 'straight', len: 250, l: 200, r: 600 },
+      ]); }
+    },
+    // 7) Spiral Düşüş - kıvrımlı uzun yol
+    { id: 'spiral', name: 'Spiral Düşüş', desc: 'Döne döne aşağı! Eğrisel parkur.', difficulty: 3, lengthLabel: 'Uzun',
+      bg1: '#0a1520', bg2: '#153040', wallColor: '#4ac0d9', trackColor: '#0a2030',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 200, r: 600 },
+        { type: 'curve', len: 500, l: 200, r: 600, amp: 120, periods: 3 },
+        { type: 'taper', len: 100, l1: 200, r1: 600, l2: 280, r2: 520 },
+        { type: 'curve', len: 400, l: 280, r: 520, amp: 80, periods: 2 },
+        { type: 'taper', len: 100, l1: 280, r1: 520, l2: 180, r2: 620 },
+        { type: 'bumpers', list: [{ x: 300, y: 1220 }, { x: 500, y: 1220 }, { x: 400, y: 1300, r: 26 }] },
+        { type: 'curve', len: 500, l: 180, r: 620, amp: 140, periods: 3 },
+        { type: 'straight', len: 250, l: 180, r: 620 },
+      ]); }
+    },
+    // 8) Dar Boğaz - çok dar geçit bölgeleri
+    { id: 'narrows', name: 'Dar Boğaz', desc: 'Aşırı dar geçitler! Sıkışma ve kaos.', difficulty: 4, lengthLabel: 'Orta',
+      bg1: '#1e0a0a', bg2: '#401015', wallColor: '#e06040', trackColor: '#2a0e0e',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 150, r: 650 },
+        { type: 'taper', len: 150, l1: 150, r1: 650, l2: 350, r2: 450 },
+        { type: 'straight', len: 120, l: 350, r: 450 },
+        { type: 'taper', len: 100, l1: 350, r1: 450, l2: 150, r2: 650 },
+        { type: 'pegs', rows: 4, cols: 8, spacingX: 58, spacingY: 45, startX: 175, startY: 490, pegR: 8 },
+        { type: 'straight', len: 280, l: 150, r: 650 },
+        { type: 'taper', len: 150, l1: 150, r1: 650, l2: 360, r2: 440 },
+        { type: 'straight', len: 150, l: 360, r: 440 },
+        { type: 'taper', len: 100, l1: 360, r1: 440, l2: 150, r2: 650 },
+        { type: 'bumpers', list: [{ x: 300, y: 1080 }, { x: 500, y: 1080 }] },
+        { type: 'taper', len: 120, l1: 150, r1: 650, l2: 340, r2: 460 },
+        { type: 'straight', len: 100, l: 340, r: 460 },
+        { type: 'taper', len: 120, l1: 340, r1: 460, l2: 150, r2: 650 },
+        { type: 'straight', len: 250, l: 150, r: 650 },
+      ]); }
+    },
+    // 9) Çivi Yağmuru - çiviler arasında uzun iniş
+    { id: 'peg_rain', name: 'Çivi Yağmuru', desc: 'Üst üste çivi bölgeleri! Şans krallığı.', difficulty: 3, lengthLabel: 'Uzun',
+      bg1: '#0a0a20', bg2: '#151540', wallColor: '#7070e0', trackColor: '#0e0e30',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 140, r: 660 },
+        { type: 'pegs', rows: 6, cols: 10, spacingX: 50, spacingY: 48, startX: 165, startY: 110, pegR: 7 },
+        { type: 'straight', len: 370, l: 140, r: 660 },
+        { type: 'bumpers', list: [{ x: 300, y: 520 }, { x: 500, y: 520 }] },
+        { type: 'straight', len: 100, l: 140, r: 660 },
+        { type: 'pegs', rows: 7, cols: 10, spacingX: 50, spacingY: 50, startX: 165, startY: 660, pegR: 8 },
+        { type: 'straight', len: 430, l: 140, r: 660 },
+        { type: 'taper', len: 100, l1: 140, r1: 660, l2: 250, r2: 550 },
+        { type: 'pegs', rows: 5, cols: 6, spacingX: 50, spacingY: 48, startX: 262, startY: 1210, pegR: 8 },
+        { type: 'straight', len: 320, l: 250, r: 550 },
+        { type: 'taper', len: 100, l1: 250, r1: 550, l2: 140, r2: 660 },
+        { type: 'straight', len: 250, l: 140, r: 660 },
+      ]); }
+    },
+    // 10) Huni Zinciri - peş peşe huniler
+    { id: 'funnel_chain', name: 'Huni Zinciri', desc: '5 huni üst üste! Daralan kanallar zinciri.', difficulty: 4, lengthLabel: 'Uzun',
+      bg1: '#15100a', bg2: '#302818', wallColor: '#d0a040', trackColor: '#201808',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 130, r: 670 },
+        { type: 'funnel', len: 250, l1: 130, r1: 670, lm: 340, rm: 460, l2: 130, r2: 670 },
+        { type: 'straight', len: 40, l: 130, r: 670 },
+        { type: 'funnel', len: 250, l1: 130, r1: 670, lm: 350, rm: 450, l2: 180, r2: 620 },
+        { type: 'straight', len: 40, l: 180, r: 620 },
+        { type: 'funnel', len: 250, l1: 180, r1: 620, lm: 360, rm: 440, l2: 130, r2: 670 },
+        { type: 'bumpers', list: [{ x: 300, y: 990 }, { x: 500, y: 990 }] },
+        { type: 'straight', len: 60, l: 130, r: 670 },
+        { type: 'funnel', len: 250, l1: 130, r1: 670, lm: 370, rm: 430, l2: 180, r2: 620 },
+        { type: 'straight', len: 40, l: 180, r: 620 },
+        { type: 'funnel', len: 250, l1: 180, r1: 620, lm: 340, rm: 460, l2: 130, r2: 670 },
+        { type: 'straight', len: 250, l: 130, r: 670 },
+      ]); }
+    },
+    // 11) Çubuk Labirenti - açılı çubuklarla dolu
+    { id: 'bar_maze', name: 'Çubuk Labirenti', desc: 'Açılı çubuk engeller! Yön değiştirmeler.', difficulty: 3, lengthLabel: 'Orta',
+      bg1: '#0a1a10', bg2: '#153525', wallColor: '#50c070', trackColor: '#0a2015',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 160, r: 640 },
+        { type: 'bars', list: [
+          { x1: 200, y1: 110, x2: 400, y2: 140 },
+          { x1: 400, y1: 200, x2: 600, y2: 170 },
+          { x1: 200, y1: 280, x2: 400, y2: 310 },
+          { x1: 400, y1: 370, x2: 600, y2: 340 },
+        ]},
+        { type: 'straight', len: 400, l: 160, r: 640 },
+        { type: 'bumpers', list: [{ x: 400, y: 530, r: 25 }] },
+        { type: 'bars', list: [
+          { x1: 200, y1: 600, x2: 350, y2: 640 },
+          { x1: 450, y1: 640, x2: 600, y2: 600 },
+          { x1: 250, y1: 720, x2: 550, y2: 740 },
+          { x1: 200, y1: 820, x2: 400, y2: 850 },
+          { x1: 400, y1: 900, x2: 600, y2: 870 },
+        ]},
+        { type: 'straight', len: 500, l: 160, r: 640 },
+        { type: 'pegs', rows: 3, cols: 7, spacingX: 62, spacingY: 45, startX: 190, startY: 1070, pegR: 7 },
+        { type: 'straight', len: 350, l: 160, r: 640 },
+      ]); }
+    },
+    // 12) Karışık Cehennem - her engelden biraz
+    { id: 'mixed_hell', name: 'Karışık Cehennem', desc: 'Tüm engeller bir arada! Tam kaos.', difficulty: 5, lengthLabel: 'Uzun',
+      bg1: '#1a0010', bg2: '#350025', wallColor: '#e04080', trackColor: '#200015',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 140, r: 660 },
+        { type: 'pegs', rows: 5, cols: 9, spacingX: 55, spacingY: 48, startX: 162, startY: 110, pegR: 8 },
+        { type: 'straight', len: 310, l: 140, r: 660 },
+        { type: 'funnel', len: 200, l1: 140, r1: 660, lm: 350, rm: 450, l2: 140, r2: 660 },
+        { type: 'bumpers', list: [{ x: 280, y: 640 }, { x: 400, y: 620, r: 28 }, { x: 520, y: 640 }] },
+        { type: 'straight', len: 100, l: 140, r: 660 },
+        { type: 'zigzag', len: 400, amp: 100, segs: 4, baseL: 200, baseR: 600 },
+        { type: 'bars', list: [
+          { x1: 200, y1: 1180, x2: 400, y2: 1210 },
+          { x1: 400, y1: 1260, x2: 600, y2: 1230 },
+        ]},
+        { type: 'straight', len: 200, l: 140, r: 660 },
+        { type: 'pegs', rows: 4, cols: 8, spacingX: 60, spacingY: 50, startX: 168, startY: 1440, pegR: 9 },
+        { type: 'straight', len: 280, l: 140, r: 660 },
+        { type: 'funnel', len: 250, l1: 140, r1: 660, lm: 360, rm: 440, l2: 140, r2: 660 },
+        { type: 'bumpers', list: [{ x: 300, y: 2000 }, { x: 500, y: 2000 }] },
+        { type: 'straight', len: 250, l: 140, r: 660 },
+      ]); }
+    },
+    // 13) Geniş Arena - çok geniş alan, çok tampon
+    { id: 'wide_arena', name: 'Geniş Arena', desc: 'Ekstra geniş parkur! 20 bilye rahatça yarışır.', difficulty: 2, lengthLabel: 'Orta',
+      bg1: '#0a0a1a', bg2: '#181838', wallColor: '#8080c0', trackColor: '#0e0e28',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 100, l: 100, r: 700 },
+        { type: 'bumpers', list: [
+          { x: 220, y: 140 }, { x: 400, y: 130, r: 25 }, { x: 580, y: 140 },
+          { x: 300, y: 240 }, { x: 500, y: 240 },
+        ]},
+        { type: 'straight', len: 300, l: 100, r: 700 },
+        { type: 'pegs', rows: 5, cols: 11, spacingX: 52, spacingY: 48, startX: 130, startY: 440, pegR: 7 },
+        { type: 'straight', len: 340, l: 100, r: 700 },
+        { type: 'funnel', len: 300, l1: 100, r1: 700, lm: 320, rm: 480, l2: 100, r2: 700 },
+        { type: 'bumpers', list: [{ x: 250, y: 1120 }, { x: 400, y: 1100, r: 28 }, { x: 550, y: 1120 }] },
+        { type: 'straight', len: 300, l: 100, r: 700 },
+      ]); }
+    },
+    // 14) Süper Uzun Maraton
+    { id: 'marathon', name: 'Süper Maraton', desc: 'En uzun parkur! Dayanıklılık testi.', difficulty: 4, lengthLabel: 'Çok Uzun',
+      bg1: '#0a0020', bg2: '#200040', wallColor: '#b04ad9', trackColor: '#150030',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 80, l: 160, r: 640 },
+        { type: 'pegs', rows: 5, cols: 8, spacingX: 55, spacingY: 48, startX: 185, startY: 110, pegR: 7 },
+        { type: 'straight', len: 330, l: 160, r: 640 },
+        { type: 'zigzag', len: 400, amp: 100, segs: 4, baseL: 210, baseR: 590 },
+        { type: 'bumpers', list: [{ x: 300, y: 850 }, { x: 500, y: 850 }] },
+        { type: 'straight', len: 100, l: 160, r: 640 },
+        { type: 'funnel', len: 300, l1: 160, r1: 640, lm: 350, rm: 450, l2: 160, r2: 640 },
+        { type: 'straight', len: 60, l: 160, r: 640 },
+        { type: 'curve', len: 400, l: 160, r: 640, amp: 100, periods: 2 },
+        { type: 'pegs', rows: 6, cols: 8, spacingX: 55, spacingY: 50, startX: 185, startY: 1730, pegR: 8 },
+        { type: 'straight', len: 380, l: 160, r: 640 },
+        { type: 'bars', list: [
+          { x1: 200, y1: 2160, x2: 400, y2: 2190 },
+          { x1: 400, y1: 2240, x2: 600, y2: 2210 },
+        ]},
+        { type: 'straight', len: 150, l: 160, r: 640 },
+        { type: 'zigzag', len: 350, amp: 90, segs: 4, baseL: 220, baseR: 580 },
+        { type: 'funnel', len: 250, l1: 160, r1: 640, lm: 340, rm: 460, l2: 160, r2: 640 },
+        { type: 'bumpers', list: [{ x: 300, y: 3000 }, { x: 400, y: 2980, r: 24 }, { x: 500, y: 3000 }] },
+        { type: 'straight', len: 200, l: 160, r: 640 },
+        { type: 'pegs', rows: 4, cols: 8, spacingX: 55, spacingY: 48, startX: 185, startY: 3240, pegR: 8 },
+        { type: 'straight', len: 350, l: 160, r: 640 },
+      ]); }
+    },
+    // 15) Hız Testi - kısa ama yoğun
+    { id: 'speed', name: 'Hız Testi', desc: 'Ultra kısa, ultra yoğun! Saf hız yarışı.', difficulty: 3, lengthLabel: 'Çok Kısa',
+      bg1: '#001020', bg2: '#002040', wallColor: '#40c0ff', trackColor: '#001530',
+      get data() { return buildTrackPath([
+        { type: 'straight', len: 60, l: 200, r: 600 },
+        { type: 'bumpers', list: [{ x: 320, y: 90 }, { x: 480, y: 90 }] },
+        { type: 'taper', len: 80, l1: 200, r1: 600, l2: 300, r2: 500 },
+        { type: 'straight', len: 60, l: 300, r: 500 },
+        { type: 'taper', len: 80, l1: 300, r1: 500, l2: 200, r2: 600 },
+        { type: 'pegs', rows: 3, cols: 6, spacingX: 58, spacingY: 40, startX: 225, startY: 310, pegR: 7 },
+        { type: 'straight', len: 180, l: 200, r: 600 },
+        { type: 'funnel', len: 150, l1: 200, r1: 600, lm: 350, rm: 450, l2: 200, r2: 600 },
+        { type: 'bumpers', list: [{ x: 300, y: 670 }, { x: 500, y: 670 }] },
+        { type: 'straight', len: 200, l: 200, r: 600 },
+      ]); }
     },
 ];
 
@@ -1056,8 +1213,8 @@ class Game {
         const t = this.tournament;
         t.on = true;
         t.round = 0;
-        t.total = TRACKS.length;
-        t.courses = shuffle([...TRACKS]);
+        t.total = Math.min(TRACKS.length, 7);
+        t.courses = shuffle([...TRACKS]).slice(0, 7);
         t.marbleData = shuffle(MARBLE_DB).slice(0, 8);
         t.scores = {};
         t.marbleData.forEach(m => { t.scores[m.name] = 0; });
