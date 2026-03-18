@@ -1,24 +1,21 @@
 {
-  "name": "workspace",
-  "version": "1.0.0",
-  "description": "Mobil cihazlara uygun, kurulum yapılabilen (PWA) basit bir Pomodoro uygulaması.",
-  "main": "app.js",
+  "name": "bilye-yarislari",
+  "version": "2.0.0",
+  "description": "2D Bilye Yarışları - Canvas tabanlı bilye (marble) yarış oyunu. YouTube için yarışlar kaydedilebilir.",
+  "main": "js/main.js",
   "scripts": {
-    "build:web": "rm -rf dist && mkdir -p dist && cp index.html styles.css app.js manifest.webmanifest icon.svg sw.js dist/ && cp -r assets dist/",
+    "start": "npx http-server -p 8080 -o",
+    "build:web": "rm -rf dist && mkdir -p dist/js && cp index.html styles.css dist/ && cp js/main.js dist/js/",
     "sync:android": "npm run build:web && npx cap sync android",
-    "build:apk": "npm run sync:android && cd android && ./gradlew assembleDebug"
+    "build:apk": "npm run sync:android && cd android && chmod +x gradlew && ./gradlew assembleDebug"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/admlyz5858/uygula.git"
   },
-  "keywords": [],
+  "keywords": ["marble", "race", "2d", "canvas", "game", "bilye"],
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/admlyz5858/uygula/issues"
-  },
-  "homepage": "https://github.com/admlyz5858/uygula#readme",
   "dependencies": {
     "@capacitor/android": "^8.2.0",
     "@capacitor/cli": "^8.2.0",
