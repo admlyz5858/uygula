@@ -259,7 +259,105 @@ const MARBLE_DB = [
     { name: 'Gök Mavisi', color: '#87CEEB', speed: 1.1, weight: 0.95, bounce: 1.05, luck: 1.0 },
     { name: 'Kiraz Kırmızı', color: '#DC143C', speed: 1.1, weight: 1.0, bounce: 1.0, luck: 1.0 },
     { name: 'Neon Yeşil', color: '#39FF14', speed: 1.25, weight: 0.85, bounce: 1.0, luck: 0.8 },
+    { name: 'Mercan', color: '#FF6F61', speed: 1.05, weight: 1.0, bounce: 1.05, luck: 1.05 },
+    { name: 'Turkuaz', color: '#40E0D0', speed: 1.1, weight: 0.95, bounce: 1.0, luck: 1.05 },
+    { name: 'Lavanta', color: '#B57EDC', speed: 0.95, weight: 1.0, bounce: 1.15, luck: 1.05 },
+    { name: 'Hardal', color: '#FFDB58', speed: 1.0, weight: 1.15, bounce: 0.9, luck: 1.0 },
+    { name: 'Çivit', color: '#4B0082', speed: 1.15, weight: 1.0, bounce: 0.95, luck: 0.95 },
+    { name: 'Şeftali', color: '#FFCBA4', speed: 1.0, weight: 0.9, bounce: 1.1, luck: 1.15 },
+    { name: 'Bordo', color: '#800020', speed: 1.05, weight: 1.2, bounce: 0.85, luck: 0.95 },
+    { name: 'Elektrik', color: '#7DF9FF', speed: 1.3, weight: 0.8, bounce: 1.05, luck: 0.75 },
+    { name: 'Pastel Pembe', color: '#FFD1DC', speed: 0.95, weight: 0.9, bounce: 1.1, luck: 1.2 },
+    { name: 'Deniz Mavisi', color: '#006994', speed: 1.1, weight: 1.1, bounce: 0.95, luck: 0.95 },
+    { name: 'Limon', color: '#FFF44F', speed: 1.15, weight: 0.85, bounce: 1.1, luck: 0.95 },
+    { name: 'Krom', color: '#DBE0E3', speed: 1.05, weight: 1.15, bounce: 0.9, luck: 1.0 },
+    { name: 'Magenta', color: '#FF00FF', speed: 1.2, weight: 0.9, bounce: 1.1, luck: 0.85 },
+    { name: 'Haki', color: '#BDB76B', speed: 0.9, weight: 1.2, bounce: 0.85, luck: 1.15 },
+    { name: 'Gül Kurusu', color: '#C08081', speed: 1.0, weight: 1.05, bounce: 1.0, luck: 1.1 },
+    { name: 'Cam Göbeği', color: '#00CED1', speed: 1.1, weight: 0.95, bounce: 1.1, luck: 1.0 },
+    { name: 'Tarçın', color: '#D2691E', speed: 1.05, weight: 1.1, bounce: 0.95, luck: 1.0 },
+    { name: 'Leylak', color: '#C8A2C8', speed: 0.95, weight: 0.95, bounce: 1.15, luck: 1.1 },
+    { name: 'Kobalt', color: '#0047AB', speed: 1.15, weight: 1.05, bounce: 0.95, luck: 0.9 },
 ];
+
+// ============================================================
+// PROCEDURAL TRACK GENERATOR
+// ============================================================
+function generateRandomTrack() {
+    const names = ['Rastgele Parkur', 'Kaotik Yol', 'Sürpriz Pist', 'Bilinmeyen Rota', 'Gizem Parkuru', 'Macera Yolu'];
+    const bgs = [
+        { bg1: '#0a102e', bg2: '#1a2850', wc: '#5a90e9', tc: '#0e1838' },
+        { bg1: '#1a0a1e', bg2: '#2a1540', wc: '#c04ae9', tc: '#15082a' },
+        { bg1: '#0a1a12', bg2: '#153828', wc: '#4ae97a', tc: '#0a2015' },
+        { bg1: '#1e1a0a', bg2: '#403520', wc: '#e9c04a', tc: '#2a2510' },
+        { bg1: '#1a0a0a', bg2: '#401520', wc: '#e94a6a', tc: '#200810' },
+    ];
+    const theme = bgs[Math.floor(Math.random() * bgs.length)];
+    const sections = [];
+    const baseL = 150 + Math.floor(Math.random() * 80);
+    const baseR = 800 - baseL;
+    sections.push({ type: 'straight', len: 100, l: baseL, r: baseR });
+
+    const sectionTypes = ['straight', 'taper', 'curve', 'zigzag', 'funnel', 'pegs', 'bumpers'];
+    const numSections = 6 + Math.floor(Math.random() * 6);
+    let curL = baseL, curR = baseR, curY = 100;
+
+    for (let i = 0; i < numSections; i++) {
+        const t = sectionTypes[Math.floor(Math.random() * sectionTypes.length)];
+        switch (t) {
+            case 'straight':
+                sections.push({ type: 'straight', len: 80 + Math.random() * 150, l: curL, r: curR });
+                curY += 80 + Math.random() * 150;
+                break;
+            case 'taper': {
+                const nL = 150 + Math.floor(Math.random() * 200);
+                const nR = 800 - 150 - Math.floor(Math.random() * 200);
+                sections.push({ type: 'taper', len: 120 + Math.random() * 150, l1: curL, r1: curR, l2: nL, r2: nR });
+                curL = nL; curR = nR;
+                curY += 120 + Math.random() * 150;
+                break;
+            }
+            case 'curve':
+                sections.push({ type: 'curve', len: 200 + Math.random() * 200, l: curL, r: curR, amp: 50 + Math.random() * 100, periods: 1 + Math.floor(Math.random() * 2) });
+                curY += 200 + Math.random() * 200;
+                break;
+            case 'zigzag':
+                sections.push({ type: 'zigzag', len: 300 + Math.random() * 300, amp: 80 + Math.random() * 100, segs: 3 + Math.floor(Math.random() * 4), baseL: curL + 50, baseR: curR - 50 });
+                curY += 300 + Math.random() * 300;
+                break;
+            case 'funnel': {
+                const mid = (curL + curR) / 2;
+                const narrow = 40 + Math.random() * 40;
+                sections.push({ type: 'funnel', len: 200 + Math.random() * 150, l1: curL, r1: curR, lm: mid - narrow, rm: mid + narrow, l2: curL, r2: curR });
+                curY += 200 + Math.random() * 150;
+                break;
+            }
+            case 'pegs':
+                sections.push({ type: 'pegs', rows: 3 + Math.floor(Math.random() * 5), cols: 5 + Math.floor(Math.random() * 4), spacingX: 40 + Math.random() * 20, spacingY: 40 + Math.random() * 15, startX: curL + 20, startY: curY + 30, pegR: 7 + Math.random() * 4 });
+                break;
+            case 'bumpers': {
+                const list = [];
+                const n = 2 + Math.floor(Math.random() * 3);
+                for (let j = 0; j < n; j++) {
+                    list.push({ x: curL + 50 + Math.random() * (curR - curL - 100), y: curY + 30 + j * 70, r: 18 + Math.random() * 12 });
+                }
+                sections.push({ type: 'bumpers', list });
+                break;
+            }
+        }
+    }
+    sections.push({ type: 'straight', len: 200, l: curL, r: curR });
+
+    const trackData = buildTrackPath(sections);
+    return {
+        id: 'random', name: names[Math.floor(Math.random() * names.length)],
+        desc: 'Prosedürel olarak oluşturulmuş rastgele parkur!',
+        difficulty: 3, lengthLabel: 'Rastgele',
+        bg1: theme.bg1, bg2: theme.bg2, wallColor: theme.wc, trackColor: theme.tc,
+        get data() { return trackData; },
+        _data: trackData
+    };
+}
 
 // ============================================================
 // UTILITIES
@@ -736,6 +834,9 @@ class Game {
         this._dustT = 0;
         this.tournament = { on: false, round: 0, total: 0, scores: {}, courses: [], marbleData: [] };
         this.elimination = { on: false, round: 0, elimPerRound: 1, survivors: [], eliminated: [] };
+        this.autoLoop = false;
+        this.autoLoopDelay = 0;
+        this.raceCount = 0;
         this.lastT = performance.now();
         this.setupUI();
         Audio.init();
@@ -762,7 +863,7 @@ class Game {
         $('btn-shuffle-racers').onclick = () => this.refreshMarblePrev();
         $('btn-replay').onclick = () => this.replayRace();
         $('btn-new-race').onclick = () => { this.showScreen('setup'); this.populateSetup(); };
-        $('btn-back-menu2').onclick = () => { this.cleanup(); this.elimination.on = false; this.showScreen('menu'); };
+        $('btn-back-menu2').onclick = () => { this.cleanup(); this.elimination.on = false; this.autoLoop = false; this.showScreen('menu'); };
         $('btn-skip-race').onclick = () => this.skipRace();
         $('btn-next-tournament-race').onclick = () => this.nextTournamentRace();
         $('btn-end-tournament').onclick = () => { this.cleanup(); this.tournament.on = false; this.showScreen('menu'); };
@@ -778,11 +879,16 @@ class Game {
     populateSetup() {
         const cl = document.getElementById('course-list');
         cl.innerHTML = '';
-        TRACKS.forEach(t => {
+        const allTracks = [...TRACKS, { id: 'random', name: 'Rastgele Parkur', desc: 'Her seferinde farklı! Prosedürel oluşturulmuş sürpriz parkur.', difficulty: 3, lengthLabel: 'Rastgele', _isRandom: true }];
+        allTracks.forEach(t => {
             const c = document.createElement('div');
             c.className = 'course-card' + (t === this.selectedTrack ? ' selected' : '');
-            c.innerHTML = `<h4>${t.name}</h4><p>${t.desc}</p><div class="course-stats"><span>Zorluk: ${'★'.repeat(t.difficulty)}${'☆'.repeat(5 - t.difficulty)}</span><span>${t.lengthLabel}</span></div>`;
-            c.onclick = () => { document.querySelectorAll('.course-card').forEach(x => x.classList.remove('selected')); c.classList.add('selected'); this.selectedTrack = t; };
+            c.innerHTML = `<h4>${t._isRandom ? '🎲 ' + t.name : t.name}</h4><p>${t.desc}</p><div class="course-stats"><span>Zorluk: ${'★'.repeat(t.difficulty)}${'☆'.repeat(5 - t.difficulty)}</span><span>${t.lengthLabel}</span></div>`;
+            c.onclick = () => {
+                document.querySelectorAll('.course-card').forEach(x => x.classList.remove('selected'));
+                c.classList.add('selected');
+                this.selectedTrack = t._isRandom ? generateRandomTrack() : t;
+            };
             cl.appendChild(c);
         });
         this.refreshMarblePrev();
@@ -823,7 +929,8 @@ class Game {
         this.countdownTime = CFG.COUNTDOWN_SECS + 1;
         this._lastCd = -1;
         this.showScreen('race');
-        document.getElementById('course-name-hud').textContent = this.selectedTrack.name;
+        const nameText = this.autoLoop ? `${this.selectedTrack.name} (#${this.raceCount})` : this.selectedTrack.name;
+        document.getElementById('course-name-hud').textContent = nameText;
         document.getElementById('countdown-overlay').classList.remove('hidden');
         this.setupProgressBar();
         this.state = 'countdown';
@@ -931,9 +1038,17 @@ class Game {
     }
 
     startAutoRace() {
-        this.selectedTrack = TRACKS[Math.floor(Math.random() * TRACKS.length)];
-        this.selectedCount = 8;
-        this.selectedMarbles = shuffle(MARBLE_DB).slice(0, 8);
+        this.autoLoop = true;
+        this.raceCount = 0;
+        this.launchAutoRace();
+    }
+
+    launchAutoRace() {
+        const useRandom = Math.random() > 0.4;
+        this.selectedTrack = useRandom ? generateRandomTrack() : TRACKS[Math.floor(Math.random() * TRACKS.length)];
+        this.selectedCount = 6 + Math.floor(Math.random() * 7);
+        this.selectedMarbles = shuffle(MARBLE_DB).slice(0, this.selectedCount);
+        this.raceCount++;
         this.startRace();
     }
 
@@ -1022,7 +1137,12 @@ class Game {
         });
 
         if (this.tournament.on) this.showTournamentStandings();
-        else this.showScreen('results');
+        else {
+            this.showScreen('results');
+            if (this.autoLoop) {
+                this.autoLoopDelay = 5;
+            }
+        }
     }
 
     updateHUD() {
@@ -1166,6 +1286,12 @@ class Game {
         // Always render background
         if (this.state === 'menu' || this.state === 'setup' || this.state === 'settings' || this.state === 'results' || this.state === 'tournament') {
             this.renderer.clear('#0a0a2e', '#162050');
+            if (this.state === 'results' && this.autoLoop && this.autoLoopDelay > 0) {
+                this.autoLoopDelay -= dt;
+                if (this.autoLoopDelay <= 0) {
+                    this.launchAutoRace();
+                }
+            }
             return;
         }
 
