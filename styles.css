@@ -99,6 +99,7 @@ html, body {
 .btn-primary { background: linear-gradient(135deg,var(--primary),var(--primary-dark)); color: #fff; box-shadow: 0 4px 15px rgba(255,107,53,0.4); }
 .btn-secondary { background: linear-gradient(135deg,var(--secondary),#3dbeb6); color: var(--darker); box-shadow: 0 4px 15px rgba(78,205,196,0.4); }
 .btn-accent { background: linear-gradient(135deg,var(--accent),#f0d000); color: var(--darker); box-shadow: 0 4px 15px rgba(255,230,109,0.4); }
+.btn-danger { background: linear-gradient(135deg,#ff4757,#c0392b); color: #fff; box-shadow: 0 4px 15px rgba(255,71,87,0.4); }
 .btn-outline { background: transparent; color: var(--light); border: 2px solid var(--glass-border); }
 .btn-outline:hover { background: var(--glass); }
 .btn-large { padding: 1.2rem 3rem; font-size: 1.3rem; }
@@ -204,6 +205,18 @@ html, body {
 /* ===== FINISH BANNER ===== */
 .finish-banner { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); font-family: var(--font-title); font-size: 3.5rem; color: var(--gold); text-shadow: 0 0 30px rgba(255,215,0,0.6); animation: finishBounce .8s ease-out; z-index: 200; pointer-events: none; white-space: nowrap; }
 @keyframes finishBounce { 0% { transform: translate(-50%,-50%) scale(0); opacity: 0; } 60% { transform: translate(-50%,-50%) scale(1.2); opacity: 1; } 100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
+
+/* ===== ELIMINATION ===== */
+.elim-info { position: absolute; top: 3.8rem; left: 1.5rem; display: flex; flex-direction: column; gap: .2rem; }
+.elim-info span { background: rgba(200,0,0,0.6); color: #fff; padding: .3rem .8rem; border-radius: 6px; font-weight: 700; font-size: .9rem; backdrop-filter: blur(4px); }
+.elim-info.hidden { display: none; }
+.elim-banner { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 150; pointer-events: none; text-align: center; }
+.elim-banner.hidden { display: none; }
+.elim-banner span { display: inline-block; font-family: var(--font-title); font-size: 2.2rem; color: #ff4757; background: rgba(0,0,0,0.7); padding: .6rem 2rem; border-radius: 12px; border: 2px solid #ff4757; animation: elimPop .6s ease-out; }
+@keyframes elimPop { 0% { transform: scale(0); opacity:0; } 60% { transform: scale(1.1); opacity:1; } 100% { transform: scale(1); } }
+
+/* ===== ELIMINATED MARBLE STYLE ===== */
+.pos-eliminated { opacity: 0.4; text-decoration: line-through; }
 
 @media (max-width: 768px) {
     .game-title { font-size: 3rem; }

@@ -404,6 +404,7 @@ class Marble {
         this.position = 0;
         this.trail = [];
         this._cele = false;
+        this.eliminated = false;
     }
 
     placeAtStart(index, total, path) {
@@ -443,6 +444,7 @@ class Marble {
         this.vx = 0; this.vy = 0;
         this.trail = [];
         this._cele = false;
+        this.eliminated = false;
         this.placeAtStart(index, total, path);
     }
 }
@@ -649,6 +651,37 @@ class Renderer {
         ctx.beginPath();
         ctx.arc(m.x - m.r * 0.25, m.y - m.r * 0.25, m.r * 0.3, 0, Math.PI * 2);
         ctx.fill();
+
+        // Eyes
+        const eyeOff = m.r * 0.22;
+        const eyeR = m.r * 0.18;
+        const pupilR = eyeR * 0.55;
+        const lookX = clamp(m.vx * 0.003, -1.5, 1.5);
+        const lookY = clamp(m.vy * 0.002, -1, 1);
+        for (const side of [-1, 1]) {
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(m.x + side * eyeOff, m.y - m.r * 0.1, eyeR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#111';
+            ctx.beginPath();
+            ctx.arc(m.x + side * eyeOff + lookX, m.y - m.r * 0.1 + lookY, pupilR, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Eliminated X mark
+        if (m.eliminated) {
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.7;
+            ctx.beginPath();
+            ctx.moveTo(m.x - m.r * 0.6, m.y - m.r * 0.6);
+            ctx.lineTo(m.x + m.r * 0.6, m.y + m.r * 0.6);
+            ctx.moveTo(m.x + m.r * 0.6, m.y - m.r * 0.6);
+            ctx.lineTo(m.x - m.r * 0.6, m.y + m.r * 0.6);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+        }
     }
 
     drawMarbleLabel(m) {
@@ -702,6 +735,7 @@ class Game {
         this._lastCd = -1;
         this._dustT = 0;
         this.tournament = { on: false, round: 0, total: 0, scores: {}, courses: [], marbleData: [] };
+        this.elimination = { on: false, round: 0, elimPerRound: 1, survivors: [], eliminated: [] };
         this.lastT = performance.now();
         this.setupUI();
         Audio.init();
@@ -714,6 +748,7 @@ class Game {
         const $ = id => document.getElementById(id);
         $('btn-quick-race').onclick = () => { this.showScreen('setup'); this.populateSetup(); };
         $('btn-tournament').onclick = () => this.startTournament();
+        $('btn-elimination').onclick = () => this.startElimination();
         $('btn-auto-race').onclick = () => this.startAutoRace();
         $('btn-settings').onclick = () => this.showScreen('settings');
         $('btn-back-settings').onclick = () => { this.applySettings(); this.showScreen('menu'); };
@@ -727,7 +762,7 @@ class Game {
         $('btn-shuffle-racers').onclick = () => this.refreshMarblePrev();
         $('btn-replay').onclick = () => this.replayRace();
         $('btn-new-race').onclick = () => { this.showScreen('setup'); this.populateSetup(); };
-        $('btn-back-menu2').onclick = () => { this.cleanup(); this.showScreen('menu'); };
+        $('btn-back-menu2').onclick = () => { this.cleanup(); this.elimination.on = false; this.showScreen('menu'); };
         $('btn-skip-race').onclick = () => this.skipRace();
         $('btn-next-tournament-race').onclick = () => this.nextTournamentRace();
         $('btn-end-tournament').onclick = () => { this.cleanup(); this.tournament.on = false; this.showScreen('menu'); };
@@ -839,6 +874,62 @@ class Game {
         this.showResults();
     }
 
+    // ---- ELIMINATION MODE ----
+    startElimination() {
+        this.elimination.on = true;
+        this.elimination.round = 0;
+        this.elimination.elimPerRound = 1;
+        this.selectedCount = 12;
+        this.selectedMarbles = shuffle(MARBLE_DB).slice(0, 12);
+        this.elimination.survivors = [...this.selectedMarbles];
+        this.elimination.eliminated = [];
+        this.selectedTrack = TRACKS[Math.floor(Math.random() * TRACKS.length)];
+        this.startRace();
+    }
+
+    finishEliminationRound() {
+        const sorted = [...this.marbles].sort((a, b) => {
+            if (a.finishTime == null && b.finishTime == null) return b.y - a.y;
+            if (a.finishTime == null) return 1;
+            if (b.finishTime == null) return -1;
+            return a.finishTime - b.finishTime;
+        });
+        const elimCount = Math.min(this.elimination.elimPerRound, sorted.length - 2);
+        const toElim = sorted.slice(sorted.length - elimCount);
+        toElim.forEach(m => {
+            m.eliminated = true;
+            this.elimination.eliminated.push(m.name);
+        });
+        this.elimination.survivors = this.elimination.survivors.filter(
+            md => !this.elimination.eliminated.includes(md.name)
+        );
+        this.elimination.round++;
+
+        // Show elimination banner
+        const elimNames = toElim.map(m => m.name).join(', ');
+        const banner = document.getElementById('elim-banner');
+        const bannerText = document.getElementById('elim-banner-text');
+        bannerText.textContent = `❌ ELENDİ: ${elimNames}`;
+        banner.classList.remove('hidden');
+        setTimeout(() => banner.classList.add('hidden'), 2500);
+
+        if (this.elimination.survivors.length <= 1) {
+            // Winner!
+            setTimeout(() => {
+                this.elimination.on = false;
+                this.showResults();
+            }, 3000);
+        } else {
+            // Next round after delay
+            setTimeout(() => {
+                this.selectedMarbles = this.elimination.survivors;
+                this.selectedCount = this.elimination.survivors.length;
+                this.selectedTrack = TRACKS[Math.floor(Math.random() * TRACKS.length)];
+                this.startRace();
+            }, 3500);
+        }
+    }
+
     startAutoRace() {
         this.selectedTrack = TRACKS[Math.floor(Math.random() * TRACKS.length)];
         this.selectedCount = 8;
@@ -936,13 +1027,24 @@ class Game {
 
     updateHUD() {
         document.getElementById('race-timer').textContent = fmtTime(this.raceTime);
+
+        // Elimination info
+        const elimInfo = document.getElementById('elim-info');
+        if (this.elimination.on) {
+            elimInfo.classList.remove('hidden');
+            document.getElementById('elim-round-text').textContent = `Tur: ${this.elimination.round + 1}`;
+            document.getElementById('elim-remaining-text').textContent = `Kalan: ${this.elimination.survivors.length} bilye`;
+        } else {
+            elimInfo.classList.add('hidden');
+        }
+
         const sorted = [...this.marbles].sort((a, b) => b.y - a.y);
         const posDiv = document.getElementById('hud-positions');
         posDiv.innerHTML = '';
         sorted.forEach((m, i) => {
             const pct = this.trackData ? Math.round((m.y / this.trackData.length) * 100) : 0;
             const row = document.createElement('div');
-            row.className = 'hud-position-row' + (i === 0 ? ' first' : '');
+            row.className = 'hud-position-row' + (i === 0 ? ' first' : '') + (m.eliminated ? ' pos-eliminated' : '');
             row.innerHTML = `<span class="pos-num">${i + 1}</span><span class="pos-color" style="background:${m.color}"></span><span class="pos-name">${m.name}</span><span class="pos-progress">${m.finished ? '🏁' : pct + '%'}</span>`;
             posDiv.appendChild(row);
         });
@@ -1134,7 +1236,15 @@ class Game {
             }
             if (this.raceFinished) {
                 this.finishTimer -= sDt;
-                if (this.finishTimer <= 0) this.showResults();
+                if (this.finishTimer <= 0) {
+                    if (this.elimination.on) {
+                        this.finishEliminationRound();
+                        this.raceFinished = false;
+                        this.finishTimer = 999;
+                    } else {
+                        this.showResults();
+                    }
+                }
             }
 
             // DNF
